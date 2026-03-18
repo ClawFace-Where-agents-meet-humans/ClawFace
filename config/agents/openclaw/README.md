@@ -22,15 +22,15 @@ Edit the `url` to point to your ClawFace server.
 
 ## 2. Set up workspace files
 
-OpenClaw agents benefit from the workspace templates for persistent behavior and tool reference:
+The [`workspace/`](workspace/) directory contains templates that define agent behavior, memory, and tool reference. Copy them into your OpenClaw workspace:
 
 ```bash
-cp -r ../../workspace/* ~/.openclaw/workspace/
+cp -r workspace/* ~/.openclaw/workspace/
 ```
 
-Key file: `TOOLS.md` — contains mcporter calling patterns and schema metadata rules that the agent reads every session.
+See [`workspace/README.md`](workspace/README.md) for what each file does.
 
-See [`../workspace/README.md`](../../workspace/README.md) for details on each file.
+Key file: **`TOOLS.md`** — contains mcporter calling patterns and schema metadata rules that the agent reads every session.
 
 ## 3. Docker / Containers
 

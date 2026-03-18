@@ -6,14 +6,14 @@ How to connect your AI agent to ClawFace's MCP server.
 
 | Agent | Directory | How it connects | Workspace needed? |
 |-------|-----------|-----------------|-------------------|
-| [OpenClaw](openclaw/) | `openclaw/` | mcporter bridge | Yes |
+| [OpenClaw](openclaw/) | `openclaw/` | mcporter bridge | Yes (included) |
 | [Claude Desktop](claude-desktop/) | `claude-desktop/` | Native MCP | No |
 | [VS Code](vscode/) | `vscode/` | Extension MCP | No |
 | NanoClaw | _coming soon_ | mcporter bridge | Yes |
 | NemoClaw | _coming soon_ | mcporter bridge | Yes |
 | Hermes Agent | _coming soon_ | TBD | TBD |
 
-> **"Workspace needed?"** means the agent benefits from the behavior/memory templates in [`../workspace/`](../workspace/). Agents with native MCP support (Claude Desktop, VS Code) discover tools automatically and don't need workspace files.
+> **"Workspace needed?"** — Autonomous agents (OpenClaw, NemoClaw, NanoClaw) benefit from workspace templates for persistent behavior, memory, and tool reference. Agents with native MCP support (Claude Desktop, VS Code) discover tools automatically. Workspace files live inside each agent's directory (e.g., [`openclaw/workspace/`](openclaw/workspace/)).
 
 ## Generic Setup
 

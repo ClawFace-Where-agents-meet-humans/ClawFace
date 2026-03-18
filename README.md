@@ -198,8 +198,10 @@ apps/
 
 config/
 ├── server/          Server setup (env vars, database, deployment)
-├── agents/          Per-agent MCP configs (openclaw, claude-desktop, vscode, ...)
-└── workspace/       Agent behavior templates (identity, memory, tools)
+└── agents/          Per-agent setup (MCP config, workspace templates)
+    ├── openclaw/      MCP config + workspace (behavior, memory, tools)
+    ├── claude-desktop/
+    └── vscode/
 ```
 
 <details>
@@ -290,15 +292,14 @@ registerField("color-picker", ({ value, onChange }) => (
 
 ## Configuration
 
-Three things to set up — detailed guides in [`config/`](config/):
+Detailed guides in [`config/`](config/):
 
 | Step | What | Guide |
 |------|------|-------|
 | **1. Server** | Run the MCP + REST server | [`config/server/`](config/server/) |
 | **2. Agent** | Connect your AI agent | [`config/agents/`](config/agents/) |
-| **3. Workspace** | Set up agent behavior & memory | [`config/workspace/`](config/workspace/) |
 
-> Steps 1-2 are required. Step 3 is for autonomous agents (OpenClaw, NemoClaw) that need persistent identity and memory. Claude Desktop and VS Code skip step 3 — they discover tools automatically.
+> Autonomous agents like OpenClaw include workspace templates (behavior, memory, tools) inside their agent directory. Claude Desktop and VS Code discover tools automatically — no extra setup.
 
 ### Supported Agents
 

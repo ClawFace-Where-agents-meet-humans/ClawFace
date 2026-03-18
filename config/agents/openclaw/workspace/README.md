@@ -1,12 +1,6 @@
-# Agent Workspace
+# OpenClaw Workspace
 
-Templates that define how an autonomous AI agent behaves, remembers, and uses tools.
-
-## Who needs this?
-
-Agents that run autonomously and need persistent identity, memory, and tool reference between sessions — like **OpenClaw**, **NemoClaw**, and **NanoClaw**.
-
-**Not needed for:** Claude Desktop, VS Code, or other agents with native MCP support (they discover tools automatically).
+Templates that define how the OpenClaw agent behaves, remembers, and uses tools.
 
 ## Files
 
@@ -19,20 +13,20 @@ Agents that run autonomously and need persistent identity, memory, and tool refe
 | `AGENTS.md` | Behavior rules — memory system, safety, group chats, heartbeats | Customize per deployment |
 | `TOOLS.md` | Tool reference — db-mcp calling patterns, schema metadata rules | Update when adding tools |
 
-## How to install
+## Install
 
 ```bash
-cp -r config/workspace/* ~/.openclaw/workspace/
+cp -r workspace/* ~/.openclaw/workspace/
 ```
 
-Or for Docker containers, set `DB_MCP_URL` and the startup script copies these automatically. See [`agents/openclaw/`](../agents/openclaw/) for details.
+For Docker containers, set `DB_MCP_URL` and the startup script copies these automatically.
 
-## Memory system
+## Memory System
 
 The workspace uses two tiers of memory:
 
 ```
-workspace/
+~/.openclaw/workspace/
 ├── MEMORY.md              Long-term curated insights (private, main sessions only)
 └── memory/
     ├── 2026-03-18.md      Daily raw session logs
