@@ -15,7 +15,7 @@
     "composite": true,
     "jsx": "react-jsx"
   },
-  "include": ["core/**/*", "react/**/*"],
+  "include": ["core/**/*", "react/**/*", "react-native/**/*"],
   "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "../shared" }
