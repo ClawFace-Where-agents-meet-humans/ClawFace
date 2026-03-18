@@ -5,6 +5,7 @@ export type {
   FilterOp,
   QueryFilter,
   QueryOptions,
+  ApiKeyResponse,
   ValidationErrorDetail,
   ErrorResponse,
 } from "@clawface/shared";
@@ -14,7 +15,7 @@ export {
   DEFAULT_QUERY_LIMIT,
 } from "@clawface/shared";
 
-import type { SchemaResponse, RecordResponse } from "@clawface/shared";
+import type { SchemaResponse, RecordResponse, ApiKeyResponse } from "@clawface/shared";
 export type { SchemaResponse, RecordResponse };
 
 // ── DB-Internal Types (include partition key and Cosmos-specific fields) ─────
@@ -25,6 +26,11 @@ export interface SchemaDoc extends SchemaResponse {
 }
 
 export interface RecordDoc extends RecordResponse {
+  pk: string;            // userId (partition key)
+}
+
+export interface ApiKeyDoc extends ApiKeyResponse {
+  keyHash: string;       // SHA-256 hash of the full key
   pk: string;            // userId (partition key)
 }
 
@@ -56,6 +62,13 @@ export interface DbProvider {
 
   // Utility
   countRecords(userId: string, schemaName: string): Promise<number>;
+
+  // API Key operations
+  createApiKey(doc: ApiKeyDoc): Promise<ApiKeyDoc>;
+  getApiKeyByHash(keyHash: string): Promise<ApiKeyDoc | null>;
+  listApiKeys(userId: string): Promise<ApiKeyDoc[]>;
+  deleteApiKey(userId: string, keyId: string): Promise<void>;
+  updateApiKeyLastUsed(keyHash: string): Promise<void>;
 }
 
 // ── Response Helpers ─────────────────────────────────────────────────────────

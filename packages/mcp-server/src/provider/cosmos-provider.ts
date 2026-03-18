@@ -5,6 +5,7 @@ import type {
   SchemaDoc,
   SchemaInput,
   RecordDoc,
+  ApiKeyDoc,
   QueryOptions,
   QueryResult,
   FilterOp,
@@ -35,6 +36,7 @@ export class CosmosDbProvider implements DbProvider {
   private db: Database | null = null;
   private schemasContainer: Container | null = null;
   private recordsContainer: Container | null = null;
+  private apiKeysContainer: Container | null = null;
 
   constructor() {
     this.dbName = process.env.COSMOS_DB_NAME ?? "clawface-mcp-server";
@@ -59,6 +61,13 @@ export class CosmosDbProvider implements DbProvider {
       this.recordsContainer = this.getDb().container("records");
     }
     return this.recordsContainer;
+  }
+
+  private getApiKeys(): Container {
+    if (!this.apiKeysContainer) {
+      this.apiKeysContainer = this.getDb().container("apikeys");
+    }
+    return this.apiKeysContainer;
   }
 
   // ── Schema Operations ────────────────────────────────────────────────────
@@ -314,6 +323,53 @@ export class CosmosDbProvider implements DbProvider {
       })
       .fetchAll();
     return resources[0] ?? 0;
+  }
+
+  // ── API Key Operations ──────────────────────────────────────────────────
+
+  async createApiKey(doc: ApiKeyDoc): Promise<ApiKeyDoc> {
+    await this.getApiKeys().items.create(doc);
+    return doc;
+  }
+
+  async getApiKeyByHash(keyHash: string): Promise<ApiKeyDoc | null> {
+    const { resources } = await this.getApiKeys().items
+      .query<ApiKeyDoc>({
+        query: "SELECT * FROM c WHERE c.keyHash = @keyHash",
+        parameters: [{ name: "@keyHash", value: keyHash }],
+      })
+      .fetchAll();
+    return resources[0] ?? null;
+  }
+
+  async listApiKeys(userId: string): Promise<ApiKeyDoc[]> {
+    const { resources } = await this.getApiKeys().items
+      .query<ApiKeyDoc>({
+        query: "SELECT * FROM c WHERE c.pk = @pk",
+        parameters: [{ name: "@pk", value: userId }],
+      })
+      .fetchAll();
+    return resources;
+  }
+
+  async deleteApiKey(userId: string, keyId: string): Promise<void> {
+    try {
+      await this.getApiKeys().item(keyId, userId).delete();
+    } catch (err: unknown) {
+      if (isNotFound(err)) {
+        throw new NotFoundError("API Key", keyId);
+      }
+      throw err;
+    }
+  }
+
+  async updateApiKeyLastUsed(keyHash: string): Promise<void> {
+    const doc = await this.getApiKeyByHash(keyHash);
+    if (!doc) return;
+    await this.getApiKeys().item(doc.id, doc.pk).replace({
+      ...doc,
+      lastUsedAt: new Date().toISOString(),
+    });
   }
 }
 

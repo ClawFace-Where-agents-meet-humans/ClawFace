@@ -7,13 +7,14 @@ import { ExplorerPage } from "./pages/ExplorerPage";
 interface Connection {
   baseUrl: string;
   userId: string;
+  apiKey?: string;
 }
 
 export function App(): React.JSX.Element {
   const [connection, setConnection] = useState<Connection | null>(null);
 
-  const handleConnect = useCallback((baseUrl: string, userId: string) => {
-    setConnection({ baseUrl, userId });
+  const handleConnect = useCallback((baseUrl: string, userId: string, apiKey?: string) => {
+    setConnection({ baseUrl, userId, apiKey });
   }, []);
 
   const handleDisconnect = useCallback(() => {
@@ -33,6 +34,7 @@ export function App(): React.JSX.Element {
     <OpenClawProvider
       baseUrl={connection.baseUrl}
       userId={connection.userId}
+      apiKey={connection.apiKey}
       headers={{ "ngrok-skip-browser-warning": "true" }}
     >
       <ExplorerPage connection={connection} onDisconnect={handleDisconnect} />

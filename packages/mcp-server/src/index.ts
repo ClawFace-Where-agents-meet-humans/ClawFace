@@ -8,6 +8,7 @@ import { createProvider } from "./provider/factory.js";
 import { registerSchemaTools } from "./tools/schema-tools.js";
 import { registerDataTools } from "./tools/data-tools.js";
 import { registerRestRoutes } from "./rest-routes.js";
+import { createAuthMiddleware, type AuthRequest } from "./auth.js";
 
 // Singleton provider (connection pool reused across requests)
 const provider = createProvider();
@@ -51,8 +52,13 @@ Use this database only when data should outlive the current conversation and be 
 /**
  * Create a new MCP server instance for each request (stateless mode).
  * Tools are registered fresh but share the same DbProvider/connection pool.
+ *
+ * @param authenticatedUserId - When AUTH_MODE=apikey, the userId resolved from
+ *   the Bearer token. Tools will use this instead of the userId argument,
+ *   preventing IDOR attacks (user-A passing userId=user-B).
+ *   When AUTH_MODE=none, this is undefined and tools use the userId argument.
  */
-function createServer(): McpServer {
+function createServer(authenticatedUserId?: string): McpServer {
   const server = new McpServer(
     {
       name: "clawface-mcp-server",
@@ -66,8 +72,8 @@ function createServer(): McpServer {
     },
   );
 
-  registerSchemaTools(server, provider);
-  registerDataTools(server, provider);
+  registerSchemaTools(server, provider, authenticatedUserId);
+  registerDataTools(server, provider, authenticatedUserId);
 
   return server;
 }
@@ -85,10 +91,18 @@ async function main(): Promise<void> {
     res.json({ status: "ok", server: "clawface-mcp-server" });
   });
 
+  // MCP auth middleware — gates access when AUTH_MODE=apikey
+  const mcpAuth = createAuthMiddleware(provider);
+
   // Handle POST requests for client-to-server communication (stateless mode)
-  app.post("/mcp", async (req, res) => {
+  // When AUTH_MODE=apikey: validates Bearer token and passes authenticated userId
+  // to tools (overrides the userId tool argument to prevent IDOR).
+  // When AUTH_MODE=none: passes through, tools use userId from arguments.
+  app.post("/mcp", mcpAuth, async (req, res) => {
     try {
-      const server = createServer();
+      // Pass authenticated userId so tools use it instead of the tool argument
+      const authenticatedUserId = (req as AuthRequest).userId;
+      const server = createServer(authenticatedUserId);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });

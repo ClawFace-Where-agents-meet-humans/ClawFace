@@ -5,15 +5,18 @@ const OpenClawContext = createContext<OpenClawClient | null>(null);
 
 export interface OpenClawProviderProps {
   baseUrl: string;
-  userId: string;
+  /** User ID — required when server runs AUTH_MODE=none (dev mode). */
+  userId?: string;
+  /** API key — required when server runs AUTH_MODE=apikey. */
+  apiKey?: string;
   headers?: Record<string, string>;
   children: React.ReactNode;
 }
 
-export function OpenClawProvider({ baseUrl, userId, headers, children }: OpenClawProviderProps): React.JSX.Element {
+export function OpenClawProvider({ baseUrl, userId, apiKey, headers, children }: OpenClawProviderProps): React.JSX.Element {
   const client = useMemo(
-    () => new OpenClawClient({ baseUrl, userId, headers }),
-    [baseUrl, userId, headers],
+    () => new OpenClawClient({ baseUrl, userId, apiKey, headers }),
+    [baseUrl, userId, apiKey, headers],
   );
 
   return (

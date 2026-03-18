@@ -11,6 +11,8 @@ How to run the ClawFace MCP + REST server.
 | `COSMOS_DB_NAME` | If cosmos | `clawface-mcp-server` | Cosmos DB database name |
 | `MONGODB_URI` | If mongodb | — | MongoDB connection string |
 | `MONGODB_DB_NAME` | If mongodb | `clawface` | MongoDB database name |
+| `AUTH_MODE` | No | `none` | Auth mode: `none` (X-User-Id header) or `apikey` (Bearer token) |
+| `AUTH_ADMIN_KEY` | If apikey | — | Admin key for bootstrap (create first API key) |
 | `PORT` | No | `3000` | Server port |
 
 ## Local Development
@@ -89,6 +91,49 @@ Uses two collections (auto-created with indexes):
 - `records` — Indexes on `(userId, schemaName)` and `(id, userId)`
 
 Works with MongoDB Atlas, self-hosted MongoDB, or any MongoDB-compatible database (e.g., DocumentDB).
+
+## Authentication
+
+ClawFace supports two auth modes, controlled by `AUTH_MODE`:
+
+### `none` (default — local development)
+
+Uses trusted `X-User-Id` header. Any client can specify which user they're acting as. **Do not use in production.**
+
+```bash
+curl -H "X-User-Id: user-123" http://localhost:3000/api/schemas
+```
+
+### `apikey` (production)
+
+Uses `Authorization: Bearer cf_xxx` headers. The server resolves the userId from the key.
+
+**Bootstrap flow:**
+
+1. Set `AUTH_MODE=apikey` and `AUTH_ADMIN_KEY=<your-secret>` in environment
+2. Create your first API key using the admin key:
+
+```bash
+curl -X POST http://localhost:3000/api/auth/keys \
+  -H "Authorization: Bearer <your-admin-key>" \
+  -H "X-User-Id: user-123" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Agent Key"}'
+```
+
+3. Use the returned `key` value (shown only once) for all subsequent requests:
+
+```bash
+curl -H "Authorization: Bearer cf_abc123..." http://localhost:3000/api/schemas
+```
+
+**Key management endpoints:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/keys` | Create API key (returns full key once) |
+| `GET` | `/api/auth/keys` | List keys for current user (prefix only) |
+| `DELETE` | `/api/auth/keys/:keyId` | Revoke a key |
 
 ### Adding a New Provider
 

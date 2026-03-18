@@ -116,6 +116,23 @@ export interface QueryResult<T = RecordResponse> {
   total: number;
 }
 
+// ── API Key Types ───────────────────────────────────────────────────────────
+
+export interface ApiKeyResponse {
+  id: string;
+  prefix: string;              // First 8 chars of key (for display: "cf_a1b2...")
+  name: string;                // User-friendly label
+  userId: string;
+  scopes?: string[];           // Optional: restrict to specific operations
+  createdAt: string;
+  lastUsedAt?: string;
+  expiresAt?: string;
+}
+
+export interface ApiKeyCreateResponse extends ApiKeyResponse {
+  key: string;                 // Full key — only returned once at creation
+}
+
 // ── Validation Error Detail ─────────────────────────────────────────────────
 
 export interface ValidationErrorDetail {

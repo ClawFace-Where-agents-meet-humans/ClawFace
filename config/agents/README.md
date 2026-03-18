@@ -25,7 +25,28 @@ Method:    POST
 Transport: Streamable HTTP (stateless)
 ```
 
-The server exposes 9 tools: `list_schemas`, `get_schema`, `define_schema`, `update_schema`, `delete_schema`, `query_records`, `get_record`, `create_record`, `update_record`, `delete_record`.
+The server exposes 10 tools: `list_schemas`, `get_schema`, `define_schema`, `update_schema`, `delete_schema`, `query_records`, `get_record`, `create_record`, `update_record`, `delete_record`.
+
+### Authentication
+
+When the server runs with `AUTH_MODE=apikey`, MCP clients must send an `Authorization` header:
+
+```json
+{
+  "mcpServers": {
+    "clawface": {
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer cf_your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+In `apikey` mode, the server resolves the userId from the API key and overrides the `userId` tool argument — preventing one user from accessing another user's data.
+
+When `AUTH_MODE=none` (default), no auth headers are needed and `userId` is passed directly in tool arguments. See [`../server/`](../server/#authentication) for details.
 
 ## Adding a New Agent
 

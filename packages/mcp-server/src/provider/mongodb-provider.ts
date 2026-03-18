@@ -5,6 +5,7 @@ import type {
   SchemaDoc,
   SchemaInput,
   RecordDoc,
+  ApiKeyDoc,
   QueryOptions,
   QueryResult,
   FilterOp,
@@ -66,6 +67,16 @@ export class MongoDbProvider implements DbProvider {
       { id: 1, userId: 1 },
       { unique: true },
     );
+
+    // API Keys: unique index on keyHash for lookup
+    await db.collection("apikeys").createIndex(
+      { keyHash: 1 },
+      { unique: true },
+    );
+    // API Keys: index for listing by userId
+    await db.collection("apikeys").createIndex(
+      { userId: 1 },
+    );
   }
 
   private async schemas(): Promise<Collection<SchemaDoc>> {
@@ -76,6 +87,11 @@ export class MongoDbProvider implements DbProvider {
   private async records(): Promise<Collection<RecordDoc>> {
     const db = await this.getDb();
     return db.collection<RecordDoc>("records");
+  }
+
+  private async apikeys(): Promise<Collection<ApiKeyDoc>> {
+    const db = await this.getDb();
+    return db.collection<ApiKeyDoc>("apikeys");
   }
 
   // ── Schema Operations ────────────────────────────────────────────────────
@@ -312,6 +328,47 @@ export class MongoDbProvider implements DbProvider {
   async countRecords(userId: string, schemaName: string): Promise<number> {
     const col = await this.records();
     return col.countDocuments({ userId, schemaName } as Filter<RecordDoc>);
+  }
+
+  // ── API Key Operations ──────────────────────────────────────────────────
+
+  async createApiKey(doc: ApiKeyDoc): Promise<ApiKeyDoc> {
+    const col = await this.apikeys();
+    await col.insertOne(doc as any);
+    return doc;
+  }
+
+  async getApiKeyByHash(keyHash: string): Promise<ApiKeyDoc | null> {
+    const col = await this.apikeys();
+    const doc = await col.findOne(
+      { keyHash } as Filter<ApiKeyDoc>,
+      { projection: { _id: 0 } },
+    );
+    return doc ?? null;
+  }
+
+  async listApiKeys(userId: string): Promise<ApiKeyDoc[]> {
+    const col = await this.apikeys();
+    return col.find(
+      { userId } as Filter<ApiKeyDoc>,
+      { projection: { _id: 0 } },
+    ).toArray();
+  }
+
+  async deleteApiKey(userId: string, keyId: string): Promise<void> {
+    const col = await this.apikeys();
+    const result = await col.deleteOne({ id: keyId, userId } as Filter<ApiKeyDoc>);
+    if (result.deletedCount === 0) {
+      throw new NotFoundError("API Key", keyId);
+    }
+  }
+
+  async updateApiKeyLastUsed(keyHash: string): Promise<void> {
+    const col = await this.apikeys();
+    await col.updateOne(
+      { keyHash } as Filter<ApiKeyDoc>,
+      { $set: { lastUsedAt: new Date().toISOString() } },
+    );
   }
 }
 

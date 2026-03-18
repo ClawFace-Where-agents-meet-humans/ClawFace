@@ -19,6 +19,25 @@ cat mcp.json
 
 Edit the `url` to point to your ClawFace server.
 
+## Authentication
+
+When the server runs with `AUTH_MODE=apikey`, add the authorization header:
+
+```json
+{
+  "mcpServers": {
+    "clawface": {
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer cf_your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+When `AUTH_MODE=none` (default), no auth header is needed.
+
 ## How it works
 
-Claude Desktop discovers all 9 ClawFace tools automatically from the MCP server's tool descriptions. The tool descriptions include schema metadata rules, type compatibility, and usage instructions — no workspace files needed.
+Claude Desktop discovers all 10 ClawFace tools automatically from the MCP server's tool descriptions. The tool descriptions include schema metadata rules, type compatibility, and usage instructions — no workspace files needed.

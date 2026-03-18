@@ -33,7 +33,14 @@ const groupDefSchema = z.object({
 
 // ── Register Schema Tools ────────────────────────────────────────────────────
 
-export function registerSchemaTools(server: McpServer, provider: DbProvider): void {
+/**
+ * @param authenticatedUserId - When set (AUTH_MODE=apikey), overrides the userId
+ *   tool argument for IDOR prevention. When undefined (AUTH_MODE=none), uses
+ *   the userId from tool arguments.
+ */
+export function registerSchemaTools(server: McpServer, provider: DbProvider, authenticatedUserId?: string): void {
+  /** Resolve userId: prefer authenticated identity over tool argument. */
+  const resolveUserId = (argUserId: string): string => authenticatedUserId ?? argUserId;
   // ── define_schema ────────────────────────────────────────────────────────
 
   server.tool(
@@ -65,7 +72,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider): vo
       tags: z.array(z.string()).optional().describe("Tags for categorization/discovery, e.g. ['crm', 'sales']"),
       createdBy: z.string().optional().describe("Who/what created this schema: 'openclaw', 'user:mohit', 'nemoclaw'"),
     },
-    async ({ userId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
+    async ({ userId: argUserId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
+      const userId = resolveUserId(argUserId);
       try {
         // Layer 1: validate schema structure
         const input = {
@@ -104,7 +112,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider): vo
     {
       userId: z.string().describe("The user ID whose schemas to list"),
     },
-    async ({ userId }) => {
+    async ({ userId: argUserId }) => {
+      const userId = resolveUserId(argUserId);
       try {
         const schemas = await provider.listSchemas(userId);
         const summary = schemas.map((s) => ({
@@ -142,7 +151,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider): vo
       userId: z.string().describe("The user ID who owns this schema"),
       schemaName: z.string().describe("The schema name to retrieve"),
     },
-    async ({ userId, schemaName }) => {
+    async ({ userId: argUserId, schemaName }) => {
+      const userId = resolveUserId(argUserId);
       try {
         const doc = await provider.getSchema(userId, schemaName);
         if (!doc) {
@@ -185,7 +195,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider): vo
       tags: z.array(z.string()).optional().describe("Updated tags"),
       createdBy: z.string().optional().describe("Updated creator attribution"),
     },
-    async ({ userId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
+    async ({ userId: argUserId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
+      const userId = resolveUserId(argUserId);
       try {
         const input: Partial<import("../types.js").SchemaInput> = {};
         if (displayName !== undefined) input.displayName = displayName;
@@ -235,7 +246,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider): vo
         .default(false)
         .describe("Set to true to also delete all records. Default: false (fail if records exist)"),
     },
-    async ({ userId, schemaName, deleteData }) => {
+    async ({ userId: argUserId, schemaName, deleteData }) => {
+      const userId = resolveUserId(argUserId);
       try {
         await provider.deleteSchema(userId, schemaName, deleteData);
         return {

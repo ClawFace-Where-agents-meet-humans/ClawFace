@@ -10,6 +10,8 @@ export type {
   QueryFilter,
   QueryOptions,
   QueryResult,
+  ApiKeyResponse,
+  ApiKeyCreateResponse,
   ValidationErrorDetail,
   ErrorResponse,
 } from "./types.js";

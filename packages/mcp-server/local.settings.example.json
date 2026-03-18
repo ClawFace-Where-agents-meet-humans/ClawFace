@@ -5,11 +5,16 @@
     "AzureWebJobsFeatureFlags": "EnableMcpCustomHandlerPreview",
     "DB_PROVIDER": "cosmos",
     "COSMOS_CONNECTION_STRING": "<your-cosmos-connection-string>",
-    "COSMOS_DB_NAME": "openclaw-db-mcp",
+    "COSMOS_DB_NAME": "clawface-db-mcp",
 
     "_comment_mongodb": "Alternative: set DB_PROVIDER to 'mongodb' and use these instead",
     "_MONGODB_URI": "mongodb://localhost:27017",
     "_MONGODB_DB_NAME": "clawface",
+
+    "_comment_auth": "Auth: set AUTH_MODE to 'apikey' for production, 'none' for dev (default)",
+    "_AUTH_MODE": "apikey",
+    "_AUTH_ADMIN_KEY": "your-admin-bootstrap-key",
+
     "AzureWebJobsStorage": "UseDevelopmentStorage=true"
   }
 }

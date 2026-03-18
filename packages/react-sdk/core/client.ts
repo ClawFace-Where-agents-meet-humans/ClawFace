@@ -10,19 +10,28 @@ import { ApiError } from "./errors.js";
 
 export interface OpenClawClientOptions {
   baseUrl: string;
-  userId: string;
+  /** User ID — required when server runs AUTH_MODE=none (dev mode). */
+  userId?: string;
+  /** API key — required when server runs AUTH_MODE=apikey. */
+  apiKey?: string;
   headers?: Record<string, string>;
 }
 
 export class OpenClawClient {
   private readonly baseUrl: string;
-  private readonly userId: string;
+  private readonly userId?: string;
+  private readonly apiKey?: string;
   private readonly extraHeaders: Record<string, string>;
 
   constructor(options: OpenClawClientOptions) {
+    if (!options.userId && !options.apiKey) {
+      throw new Error("OpenClawClient requires either userId (dev mode) or apiKey (production)");
+    }
+
     // Strip trailing slash
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.userId = options.userId;
+    this.apiKey = options.apiKey;
     this.extraHeaders = options.headers ?? {};
   }
 
@@ -103,9 +112,16 @@ export class OpenClawClient {
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
-      "X-User-Id": this.userId,
       ...this.extraHeaders,
     };
+
+    // Set auth headers
+    if (this.apiKey) {
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+    if (this.userId) {
+      headers["X-User-Id"] = this.userId;
+    }
 
     if (body !== undefined) {
       headers["Content-Type"] = "application/json";

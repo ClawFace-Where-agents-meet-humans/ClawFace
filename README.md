@@ -85,7 +85,7 @@ Add to your MCP client config:
 
 The agent discovers 9 tools automatically: `define_schema`, `create_record`, `query_records`, etc.
 
-> See [config/examples/](config/examples/) for agent-specific configs (Claude Desktop, VS Code, OpenClaw, and more).
+> See [config/agents/](config/agents/) for agent-specific configs (Claude Desktop, VS Code, OpenClaw, and more).
 
 ### 3. Add the React UI
 
@@ -94,9 +94,15 @@ import { OpenClawProvider, useSchemas, useRecords } from "@clawface/react-sdk/re
 
 function App() {
   return (
+    // Dev mode (AUTH_MODE=none): pass userId directly
     <OpenClawProvider baseUrl="http://localhost:3000/api" userId="user-123">
       <MyDashboard />
     </OpenClawProvider>
+
+    // Production (AUTH_MODE=apikey): pass API key instead
+    // <OpenClawProvider baseUrl="https://api.clawface.io/api" apiKey="cf_abc123...">
+    //   <MyDashboard />
+    // </OpenClawProvider>
   );
 }
 ```
@@ -297,9 +303,23 @@ Detailed guides in [`config/`](config/):
 | Step | What | Guide |
 |------|------|-------|
 | **1. Server** | Run the MCP + REST server | [`config/server/`](config/server/) |
-| **2. Agent** | Connect your AI agent | [`config/agents/`](config/agents/) |
+| **2. Auth** | Set up authentication | [`config/server/`](config/server/#authentication) |
+| **3. Agent** | Connect your AI agent | [`config/agents/`](config/agents/) |
 
 > Autonomous agents like OpenClaw include workspace templates (behavior, memory, tools) inside their agent directory. Claude Desktop and VS Code discover tools automatically — no extra setup.
+
+### Authentication
+
+Two modes, controlled by `AUTH_MODE` env var:
+
+| Mode | For | How it works |
+|------|-----|-------------|
+| `none` (default) | Local development | Trusted `X-User-Id` header |
+| `apikey` | Production | `Authorization: Bearer cf_xxx` — server resolves userId from key |
+
+In `apikey` mode, both MCP and REST endpoints are protected. MCP tools receive the authenticated userId server-side (overrides the `userId` tool argument for IDOR prevention).
+
+See [`config/server/`](config/server/#authentication) for setup, bootstrap flow, and key management API.
 
 ### Supported Agents
 
@@ -313,18 +333,20 @@ Detailed guides in [`config/`](config/):
 ### Self-Hosting
 
 ```bash
-# With MongoDB
+# With MongoDB (dev mode — no auth)
 docker run -p 3000:3000 \
   -e DB_PROVIDER=mongodb \
   -e MONGODB_URI="mongodb://your-host:27017" \
   -e MONGODB_DB_NAME=clawface \
   ghcr.io/aiclawface/clawface:latest
 
-# With Cosmos DB
+# With Cosmos DB + API key auth (production)
 docker run -p 3000:3000 \
   -e DB_PROVIDER=cosmos \
   -e COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;" \
   -e COSMOS_DB_NAME=clawface \
+  -e AUTH_MODE=apikey \
+  -e AUTH_ADMIN_KEY="your-admin-secret" \
   ghcr.io/aiclawface/clawface:latest
 ```
 

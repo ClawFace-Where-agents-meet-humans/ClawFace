@@ -9,25 +9,13 @@ import {
   SchemaValidationError,
   RecordValidationError,
 } from "./errors.js";
-
-// ── Auth Middleware ──────────────────────────────────────────────────────────
-
-interface AuthRequest extends Request {
-  userId: string;
-}
-
-function requireUserId(req: Request, res: Response, next: NextFunction): void {
-  const userId = req.headers["x-user-id"];
-  if (!userId || typeof userId !== "string") {
-    res.status(401).json({
-      error: "UNAUTHORIZED",
-      message: "X-User-Id header required",
-    });
-    return;
-  }
-  (req as AuthRequest).userId = userId;
-  next();
-}
+import {
+  createAuthMiddleware,
+  createKeyManagementAuth,
+  createApiKey,
+  type AuthRequest,
+} from "./auth.js";
+import type { ApiKeyResponse } from "./types.js";
 
 // ── Error Handling Middleware ────────────────────────────────────────────────
 
@@ -58,9 +46,72 @@ function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFun
 
 // ── Route Registration ──────────────────────────────────────────────────────
 
+/** Strip internal fields from ApiKeyDoc for API responses. */
+function toApiKeyResponse(doc: { id: string; prefix: string; name: string; userId: string; scopes?: string[]; createdAt: string; lastUsedAt?: string; expiresAt?: string; keyHash?: string; pk?: string }): ApiKeyResponse {
+  const { keyHash: _kh, pk: _pk, ...rest } = doc;
+  return rest;
+}
+
 export function registerRestRoutes(app: Express, provider: DbProvider): void {
-  // All /api routes require userId
-  app.use("/api", requireUserId);
+  const authMiddleware = createAuthMiddleware(provider);
+  const keyAuthMiddleware = createKeyManagementAuth(provider);
+
+  // All /api routes require auth (except key management which has its own)
+  app.use("/api/auth", keyAuthMiddleware);
+  app.use("/api/schemas", authMiddleware);
+  app.use("/api/records", authMiddleware);
+
+  // ── API Key Management Routes ───────────────────────────────────────────
+
+  // POST /api/auth/keys — create a new API key
+  app.post("/api/auth/keys", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { userId } = req as AuthRequest;
+      const { name, scopes, expiresAt } = req.body;
+
+      if (!name || typeof name !== "string") {
+        res.status(400).json({
+          error: "BAD_REQUEST",
+          message: "name is required (string)",
+        });
+        return;
+      }
+
+      const result = await createApiKey(provider, {
+        name,
+        userId,
+        scopes,
+        expiresAt,
+      });
+
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /api/auth/keys — list API keys for current user
+  app.get("/api/auth/keys", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { userId } = req as AuthRequest;
+      const keys = await provider.listApiKeys(userId);
+      res.json(keys.map(toApiKeyResponse));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // DELETE /api/auth/keys/:keyId — delete an API key
+  app.delete("/api/auth/keys/:keyId", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { userId } = req as AuthRequest;
+      const { keyId } = req.params;
+      await provider.deleteApiKey(userId, keyId);
+      res.status(204).end();
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // ── Schema Routes ───────────────────────────────────────────────────────
 
@@ -287,6 +338,6 @@ export function registerRestRoutes(app: Express, provider: DbProvider): void {
     }
   });
 
-  // ── Error Handler (must be registered after routes) ─────────────────────
+  // ── Error Handler (must be registered after all /api routes) ─────────────
   app.use("/api", errorHandler);
 }

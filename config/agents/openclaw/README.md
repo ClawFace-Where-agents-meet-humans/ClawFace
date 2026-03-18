@@ -45,6 +45,28 @@ The startup script:
 2. Writes MCP config to both config paths
 3. Sets correct file ownership for the `openclaw` user
 
+## Authentication
+
+When the server runs with `AUTH_MODE=apikey`, add the authorization header to the MCP config:
+
+```json
+{
+  "mcpServers": {
+    "db-mcp": {
+      "transport": "http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer cf_your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+In `apikey` mode, the `userId` tool argument is overridden server-side with the authenticated user — the agent can pass any value and the server ensures data isolation.
+
+When `AUTH_MODE=none` (default), no auth header is needed.
+
 ## How the agent calls tools
 
 ```

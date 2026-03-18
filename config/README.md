@@ -3,7 +3,8 @@
 | # | I want to... | Go to |
 |---|-------------|-------|
 | 1 | **Run the ClawFace server** | [`server/`](server/) |
-| 2 | **Connect an AI agent** | [`agents/`](agents/) |
+| 2 | **Set up authentication** | [`server/`](server/#authentication) |
+| 3 | **Connect an AI agent** | [`agents/`](agents/) |
 
 ```
 config/

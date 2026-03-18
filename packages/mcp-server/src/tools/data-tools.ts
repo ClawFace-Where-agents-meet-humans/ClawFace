@@ -53,7 +53,14 @@ function validateQueryFilters(
 
 // ── Register Data Tools ──────────────────────────────────────────────────────
 
-export function registerDataTools(server: McpServer, provider: DbProvider): void {
+/**
+ * @param authenticatedUserId - When set (AUTH_MODE=apikey), overrides the userId
+ *   tool argument for IDOR prevention. When undefined (AUTH_MODE=none), uses
+ *   the userId from tool arguments.
+ */
+export function registerDataTools(server: McpServer, provider: DbProvider, authenticatedUserId?: string): void {
+  /** Resolve userId: prefer authenticated identity over tool argument. */
+  const resolveUserId = (argUserId: string): string => authenticatedUserId ?? argUserId;
   // ── create_record ──────────────────────────────────────────────────────
 
   server.tool(
@@ -66,7 +73,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider): void
       schemaName: z.string().describe("The schema to create a record in"),
       data: z.record(z.unknown()).describe("Record data matching the schema field definitions"),
     },
-    async ({ userId, schemaName, data }) => {
+    async ({ userId: argUserId, schemaName, data }) => {
+      const userId = resolveUserId(argUserId);
       try {
         // Fetch schema first
         const schema = await provider.getSchema(userId, schemaName);
@@ -114,7 +122,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider): void
       userId: z.string().describe("The user ID who owns this record"),
       recordId: z.string().describe("The record UUID to retrieve"),
     },
-    async ({ userId, recordId }) => {
+    async ({ userId: argUserId, recordId }) => {
+      const userId = resolveUserId(argUserId);
       try {
         const doc = await provider.getRecord(userId, recordId);
         if (!doc) {
@@ -142,7 +151,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider): void
       recordId: z.string().describe("The record UUID to update"),
       data: z.record(z.unknown()).describe("Complete replacement data matching the schema"),
     },
-    async ({ userId, recordId, data }) => {
+    async ({ userId: argUserId, recordId, data }) => {
+      const userId = resolveUserId(argUserId);
       try {
         // Fetch existing record first
         const existing = await provider.getRecord(userId, recordId);
@@ -195,7 +205,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider): void
       userId: z.string().describe("The user ID who owns this record"),
       recordId: z.string().describe("The record UUID to delete"),
     },
-    async ({ userId, recordId }) => {
+    async ({ userId: argUserId, recordId }) => {
+      const userId = resolveUserId(argUserId);
       try {
         await provider.deleteRecord(userId, recordId);
         return {
@@ -238,7 +249,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider): void
       limit: z.number().optional().describe("Max results to return (default 20, max 100)"),
       offset: z.number().optional().describe("Number of results to skip (for pagination)"),
     },
-    async ({ userId, schemaName, filters, orderBy, orderDir, limit, offset }) => {
+    async ({ userId: argUserId, schemaName, filters, orderBy, orderDir, limit, offset }) => {
+      const userId = resolveUserId(argUserId);
       try {
         // Check if schema exists (for filter validation + warning)
         const schema = await provider.getSchema(userId, schemaName);
