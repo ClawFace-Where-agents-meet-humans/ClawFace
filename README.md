@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://clawface.io/logo.svg" width="80" alt="ClawFace logo" />
+  <img src="assets/logo.png" width="120" alt="ClawFace logo" />
 </p>
 
 <h1 align="center">ClawFace</h1>
