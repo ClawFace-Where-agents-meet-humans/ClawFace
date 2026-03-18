@@ -197,8 +197,9 @@ apps/
 └── demo/            Example app (Vite + shadcn/ui + Tailwind)
 
 config/
-├── workspace/       Agent workspace templates (behavior, memory, tools)
-└── examples/        Per-agent MCP configs (openclaw, claude-desktop, vscode, ...)
+├── server/          Server setup (env vars, database, deployment)
+├── agents/          Per-agent MCP configs (openclaw, claude-desktop, vscode, ...)
+└── workspace/       Agent behavior templates (identity, memory, tools)
 ```
 
 <details>
@@ -289,80 +290,37 @@ registerField("color-picker", ({ value, onChange }) => (
 
 ## Configuration
 
-Full guide: **[config/README.md](config/README.md)**
+Three things to set up — detailed guides in [`config/`](config/):
 
-### Server
+| Step | What | Guide |
+|------|------|-------|
+| **1. Server** | Run the MCP + REST server | [`config/server/`](config/server/) |
+| **2. Agent** | Connect your AI agent | [`config/agents/`](config/agents/) |
+| **3. Workspace** | Set up agent behavior & memory | [`config/workspace/`](config/workspace/) |
 
-```bash
-cd packages/mcp-server
-cp local.settings.example.json local.settings.json
-```
+> Steps 1-2 are required. Step 3 is for autonomous agents (OpenClaw, NemoClaw) that need persistent identity and memory. Claude Desktop and VS Code skip step 3 — they discover tools automatically.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DB_PROVIDER` | Yes | Database backend (`cosmos`) |
-| `COSMOS_CONNECTION_STRING` | Yes | Azure Cosmos DB connection string |
-| `COSMOS_DB_NAME` | Yes | Database name |
+### Supported Agents
 
-### Connecting Agents
+| Agent | How it connects | Status |
+|-------|-----------------|--------|
+| [OpenClaw](config/agents/openclaw/) | mcporter bridge + workspace | Ready |
+| [Claude Desktop](config/agents/claude-desktop/) | Native MCP | Ready |
+| [VS Code](config/agents/vscode/) | Extension MCP | Ready |
+| NanoClaw, NemoClaw, Hermes | — | Coming soon |
 
-Each agent has its own config directory with `mcp-client.json` and setup instructions:
-
-| Agent | Config | Status |
-|-------|--------|--------|
-| [OpenClaw](config/examples/openclaw/) | mcporter bridge + workspace files | Ready |
-| [Claude Desktop](config/examples/claude-desktop/) | Native MCP, auto-discovered tools | Ready |
-| [VS Code](config/examples/vscode/) | Copilot / Claude Code | Ready |
-| NanoClaw | — | Coming soon |
-| NemoClaw | — | Coming soon |
-| Hermes Agent | — | Coming soon |
-
-> **Adding a new agent?** Create `config/examples/<agent-name>/` with `mcp-client.json` and `README.md`.
-
-### Agent Workspace
-
-ClawFace provides [workspace templates](config/workspace/) that define how agents behave, remember, and use tools:
-
-| File | Purpose |
-|------|---------|
-| `AGENTS.md` | Behavior rules, memory system, safety guidelines |
-| `SOUL.md` | Core identity and values |
-| `TOOLS.md` | db-mcp calling patterns, schema metadata rules |
-| `USER.md` | User profile template |
-| `IDENTITY.md` | Agent identity template |
-| `BOOTSTRAP.md` | First-run onboarding flow |
+### Self-Hosting
 
 ```bash
-cp -r config/workspace/* ~/.openclaw/workspace/
-```
-
-These files are **agent-portable** — any LLM agent can read them and operate without prior context.
-
----
-
-## Self-Hosting
-
-### Azure Cosmos DB (current)
-
-```bash
-DB_PROVIDER=cosmos
-COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;"
-COSMOS_DB_NAME=clawface
-```
-
-### Docker
-
-```bash
+# Docker
 docker run -p 3000:3000 \
   -e DB_PROVIDER=cosmos \
-  -e COSMOS_CONNECTION_STRING="..." \
+  -e COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;" \
   -e COSMOS_DB_NAME=clawface \
   ghcr.io/aiclawface/clawface:latest
 ```
 
-### Other Databases
-
-The server uses a `DbProvider` interface. Adding PostgreSQL, SQLite, or DynamoDB is straightforward — implement the interface and register it in `provider/factory.ts`.
+The server uses a pluggable `DbProvider` interface — Cosmos DB today, Postgres/SQLite/DynamoDB next. See [`config/server/`](config/server/) for details.
 
 ---
 
