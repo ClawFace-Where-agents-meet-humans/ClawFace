@@ -1,0 +1,36 @@
+{
+  "name": "@clawface/react-sdk",
+  "version": "1.0.0",
+  "description": "React SDK for ClawFace — auto-generated forms, tables, and CRUD from schema metadata",
+  "main": "dist/react/index.js",
+  "types": "dist/react/index.d.ts",
+  "exports": {
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "default": "./dist/core/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./react/styles/default.css": "./react/styles/default.css"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@clawface/shared": "1.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.5.0"
+  },
+  "type": "module"
+}

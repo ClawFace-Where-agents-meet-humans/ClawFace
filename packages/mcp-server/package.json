@@ -1,0 +1,32 @@
+{
+  "name": "@clawface/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for ClawFace structured data storage with dynamic schemas",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch & node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.2.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@clawface/shared": "1.0.0",
+    "cors": "^2.8.6",
+    "express": "^4.18.2",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^3.1.1"
+  },
+  "type": "module"
+}

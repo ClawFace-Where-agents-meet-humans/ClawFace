@@ -1,0 +1,14 @@
+{
+  "name": "@clawface/shared",
+  "version": "1.0.0",
+  "description": "Shared types, validation, and constants for ClawFace",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  },
+  "type": "module"
+}

@@ -1,0 +1,29 @@
+{
+  "name": "clawface",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ClawFace — Where agents meet humans. Agent-native data layer with auto-generated UI.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ClawFace-dev/clawface.git"
+  },
+  "homepage": "https://clawface.io",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:mcp && npm run build:sdk && npm run build:demo",
+    "build:shared": "npm run build -w packages/shared",
+    "build:mcp": "npm run build -w packages/mcp-server",
+    "build:sdk": "npm run build -w packages/react-sdk",
+    "build:demo": "npm run build -w apps/demo",
+    "dev": "npm run dev -w apps/demo",
+    "test": "npm run test -w packages/mcp-server --if-present",
+    "clean": "rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
