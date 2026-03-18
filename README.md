@@ -313,7 +313,14 @@ Detailed guides in [`config/`](config/):
 ### Self-Hosting
 
 ```bash
-# Docker
+# With MongoDB
+docker run -p 3000:3000 \
+  -e DB_PROVIDER=mongodb \
+  -e MONGODB_URI="mongodb://your-host:27017" \
+  -e MONGODB_DB_NAME=clawface \
+  ghcr.io/aiclawface/clawface:latest
+
+# With Cosmos DB
 docker run -p 3000:3000 \
   -e DB_PROVIDER=cosmos \
   -e COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;" \
@@ -321,7 +328,7 @@ docker run -p 3000:3000 \
   ghcr.io/aiclawface/clawface:latest
 ```
 
-The server uses a pluggable `DbProvider` interface — Cosmos DB today, Postgres/SQLite/DynamoDB next. See [`config/server/`](config/server/) for details.
+Supports **MongoDB** and **Azure Cosmos DB** out of the box. Pluggable `DbProvider` interface — add Postgres, SQLite, or DynamoDB by implementing one interface. See [`config/server/`](config/server/) for details.
 
 ---
 

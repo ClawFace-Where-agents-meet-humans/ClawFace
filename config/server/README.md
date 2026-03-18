@@ -6,9 +6,11 @@ How to run the ClawFace MCP + REST server.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DB_PROVIDER` | Yes | — | Database backend (`cosmos`) |
+| `DB_PROVIDER` | Yes | — | Database backend: `cosmos` or `mongodb` |
 | `COSMOS_CONNECTION_STRING` | If cosmos | — | Full Cosmos DB connection string |
-| `COSMOS_DB_NAME` | If cosmos | — | Database name |
+| `COSMOS_DB_NAME` | If cosmos | `clawface-mcp-server` | Cosmos DB database name |
+| `MONGODB_URI` | If mongodb | — | MongoDB connection string |
+| `MONGODB_DB_NAME` | If mongodb | `clawface` | MongoDB database name |
 | `PORT` | No | `3000` | Server port |
 
 ## Local Development
@@ -60,24 +62,52 @@ ngrok http 3000
 
 ## Database Providers
 
-ClawFace uses a pluggable `DbProvider` interface.
+ClawFace uses a pluggable `DbProvider` interface. Two providers are included:
 
-### Azure Cosmos DB (current)
+### Azure Cosmos DB
 
-Auto-creates two containers:
+```bash
+DB_PROVIDER=cosmos
+COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;"
+COSMOS_DB_NAME=clawface
+```
+
+Uses two containers (auto-created):
 - `schemas` — Schema definitions (partitioned by `userId`)
 - `records` — Data records (partitioned by `userId`)
 
+### MongoDB
+
+```bash
+DB_PROVIDER=mongodb
+MONGODB_URI="mongodb://localhost:27017"
+MONGODB_DB_NAME=clawface
+```
+
+Uses two collections (auto-created with indexes):
+- `schemas` — Unique index on `(userId, schemaName)`
+- `records` — Indexes on `(userId, schemaName)` and `(id, userId)`
+
+Works with MongoDB Atlas, self-hosted MongoDB, or any MongoDB-compatible database (e.g., DocumentDB).
+
 ### Adding a New Provider
 
-Implement `DbProvider` from `packages/mcp-server/src/types.ts` and register it in `packages/mcp-server/src/provider/factory.ts`. See `cosmos-provider.ts` for reference.
+Implement `DbProvider` from `packages/mcp-server/src/types.ts` and register it in `packages/mcp-server/src/provider/factory.ts`.
 
 ## Docker
 
 ```bash
+# With Cosmos DB
 docker run -p 3000:3000 \
   -e DB_PROVIDER=cosmos \
   -e COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;" \
   -e COSMOS_DB_NAME=clawface \
+  ghcr.io/aiclawface/clawface:latest
+
+# With MongoDB
+docker run -p 3000:3000 \
+  -e DB_PROVIDER=mongodb \
+  -e MONGODB_URI="mongodb://your-host:27017" \
+  -e MONGODB_DB_NAME=clawface \
   ghcr.io/aiclawface/clawface:latest
 ```

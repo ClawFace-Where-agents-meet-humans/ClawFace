@@ -6,6 +6,10 @@
     "DB_PROVIDER": "cosmos",
     "COSMOS_CONNECTION_STRING": "<your-cosmos-connection-string>",
     "COSMOS_DB_NAME": "openclaw-db-mcp",
+
+    "_comment_mongodb": "Alternative: set DB_PROVIDER to 'mongodb' and use these instead",
+    "_MONGODB_URI": "mongodb://localhost:27017",
+    "_MONGODB_DB_NAME": "clawface",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true"
   }
 }

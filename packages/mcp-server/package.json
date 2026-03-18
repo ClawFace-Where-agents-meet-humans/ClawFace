@@ -13,10 +13,11 @@
   },
   "dependencies": {
     "@azure/cosmos": "^4.2.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
     "@clawface/shared": "1.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "cors": "^2.8.6",
     "express": "^4.18.2",
+    "mongodb": "^7.1.0",
     "uuid": "^11.1.0",
     "zod": "^3.25.76"
   },
