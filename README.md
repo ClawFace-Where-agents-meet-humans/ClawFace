@@ -1,66 +1,77 @@
 <p align="center">
-  <h1 align="center">🐾 ClawFace</h1>
-  <p align="center"><strong>Where agents meet humans.</strong></p>
-  <p align="center">
-    AI agents store structured data via MCP → ClawFace auto-generates the UI → humans browse, edit, and manage it.
-  </p>
+  <img src="https://clawface.io/logo.svg" width="80" alt="ClawFace logo" />
+</p>
+
+<h1 align="center">ClawFace</h1>
+
+<p align="center">
+  <strong>The missing UI layer for AI agents.</strong><br/>
+  Agents define schemas via MCP. ClawFace auto-generates the interface. Humans see their data.
 </p>
 
 <p align="center">
-  <a href="https://clawface.io">Website</a> •
-  <a href="#quickstart">Quickstart</a> •
-  <a href="#how-it-works">How It Works</a> •
-  <a href="#packages">Packages</a> •
-  <a href="#react-sdk">React SDK</a> •
-  <a href="#mcp-server">MCP Server</a> •
-  <a href="#configuration">Configuration</a> •
-  <a href="#self-hosting">Self-Hosting</a> •
-  <a href="https://x.com/ClawFaceAI">𝕏 @ClawFaceAI</a>
+  <a href="https://github.com/AiClawFace/clawface/actions"><img src="https://img.shields.io/github/actions/workflow/status/AiClawFace/clawface/ci.yml?branch=main&style=flat-square" alt="CI"></a>
+  <a href="https://github.com/AiClawFace/clawface/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License"></a>
+  <a href="https://www.npmjs.com/package/@clawface/react-sdk"><img src="https://img.shields.io/npm/v/@clawface/react-sdk?style=flat-square&label=react-sdk" alt="npm"></a>
+  <a href="https://github.com/AiClawFace/clawface"><img src="https://img.shields.io/github/stars/AiClawFace/clawface?style=flat-square" alt="Stars"></a>
+  <a href="https://discord.gg/clawface"><img src="https://img.shields.io/discord/0000000000?style=flat-square&label=discord" alt="Discord"></a>
+</p>
+
+<p align="center">
+  <a href="https://clawface.io">Website</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="https://docs.clawface.io">Docs</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="https://discord.gg/clawface">Discord</a> ·
+  <a href="https://x.com/AiClawFace">𝕏</a>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="https://clawface.io/demo.gif" width="720" alt="ClawFace demo — agent creates schema, UI auto-generates" />
 </p>
 
 ---
 
-## The Problem
+## Why ClawFace?
 
-AI agents are great at collecting and processing information — but **humans have no way to see, verify, or manage** the data agents store on their behalf. There's no UI. No dashboard. No visibility.
+AI agents collect and process data autonomously — but **humans have no way to see it**. No dashboard. No forms. No visibility. Data stays buried in chat history or agent memory.
 
-## The Solution
-
-**ClawFace** bridges the gap between autonomous AI agents and the humans they serve:
-
-1. **Agent defines a schema** — "I need to track contacts with name, email, and company"
-2. **Agent creates records** — stores structured data via MCP tools
-3. **ClawFace generates the UI** — forms, tables, detail views — all auto-generated from the schema
-4. **Human browses & manages** — sees their data in a real app, not buried in chat history
+**ClawFace fixes this.** An agent defines a schema, stores records via MCP, and ClawFace auto-generates a full CRUD interface — forms, tables, detail views — so humans can browse, verify, and manage everything their agents store.
 
 ```
-┌─────────────┐       MCP / REST        ┌─────────────────┐      React SDK      ┌─────────────┐
-│   AI Agent   │ ───────────────────────▶│  ClawFace MCP   │◀────────────────── │   Web App   │
-│  (any LLM)   │   define_schema         │     Server      │   useSchemas()     │  (auto-gen  │
-│              │   create_record          │                 │   useRecords()     │   UI)       │
-│              │   query_records          │   Cosmos DB /   │   <DataTable />    │             │
-└─────────────┘                          │   any DB        │   <RecordForm />   └─────────────┘
-                                         └─────────────────┘
+  AI Agent                    ClawFace                     Human
+  ────────                    ────────                     ─────
+  define_schema("contacts")
+  create_record({...})   ──▶  MCP Server  ◀──  React SDK  ──▶  Auto-generated UI
+  query_records(...)          (validates)      (renders)        (browse, edit, manage)
 ```
 
-## Quickstart
+**One schema. Two interfaces.** The agent writes data. The human sees it. Neither needs to know about the other.
 
-### 1. Start the MCP Server
+---
+
+## Quick Start
+
+### 1. Start the server
 
 ```bash
+git clone https://github.com/AiClawFace/clawface.git
+cd clawface
+npm install && npm run build
+
 cd packages/mcp-server
-npm install
-npm run build && npm start
+cp local.settings.example.json local.settings.json
+# Edit local.settings.json with your Cosmos DB credentials
+npm start
 ```
 
-The server starts on `http://localhost:3000` with:
-- **MCP endpoint**: `POST /mcp` (Streamable HTTP, stateless)
-- **REST API**: `/api/:userId/schemas`, `/api/:userId/schemas/:name/records`
-- **Health check**: `GET /health`
+Server runs at `http://localhost:3000` with MCP (`/mcp`) + REST (`/api`) + health (`/health`).
 
-### 2. Connect your AI agent
+### 2. Connect your agent
 
-Point any MCP-compatible agent to the server:
+Add to your MCP client config:
 
 ```json
 {
@@ -72,130 +83,155 @@ Point any MCP-compatible agent to the server:
 }
 ```
 
-The agent gets 8 tools: `list_schemas`, `get_schema`, `define_schema`, `delete_schema`, `query_records`, `get_record`, `create_record`, `update_record`, `delete_record`.
+The agent discovers 9 tools automatically: `define_schema`, `create_record`, `query_records`, etc.
+
+> See [config/examples/](config/examples/) for agent-specific configs (Claude Desktop, VS Code, OpenClaw, and more).
 
 ### 3. Add the React UI
 
-```bash
-npm install @clawface/react-sdk
-```
-
 ```tsx
-import { OpenClawProvider, SchemaList, DataTable, RecordForm } from "@clawface/react-sdk/react";
+import { OpenClawProvider, useSchemas, useRecords } from "@clawface/react-sdk/react";
 
 function App() {
   return (
     <OpenClawProvider baseUrl="http://localhost:3000/api" userId="user-123">
-      <SchemaList />           {/* Auto-generated list of all schemas */}
-      <DataTable schema="contacts" />  {/* Auto-generated table */}
-      <RecordForm schema="contacts" /> {/* Auto-generated form */}
+      <MyDashboard />
     </OpenClawProvider>
   );
 }
 ```
 
-That's it. The agent stores data, the human sees it.
+That's it. Agent stores data, human sees it.
 
-## How It Works
+---
+
+## Features
 
 ### Schema-as-Contract
 
-The schema is the single source of truth shared between agent and UI. An agent defines it like this:
+One schema definition drives everything — agent validation, UI generation, and cross-agent portability:
 
 ```json
 {
   "fields": {
-    "name":    { "type": "string", "required": true, "label": "Full Name" },
-    "email":   { "type": "string", "required": true, "inputType": "text" },
-    "company": { "type": "string", "label": "Company" },
-    "priority": {
-      "type": "string",
-      "inputType": "select",
-      "options": ["low", "medium", "high"],
-      "default": "medium"
-    },
-    "notes":   { "type": "string", "inputType": "textarea" }
+    "name":     { "type": "string", "required": true, "label": "Full Name" },
+    "priority": { "type": "string", "inputType": "select", "options": ["low", "medium", "high"] },
+    "notes":    { "type": "string", "inputType": "textarea" }
   },
   "purpose": "Track sales contacts for CRM pipeline",
   "instructions": "Create a record when user mentions a new contact."
 }
 ```
 
-From this single definition:
-- The **MCP server** validates data, enforces types, rejects mismatches
-- The **React SDK** auto-generates forms (text inputs, selects, toggles, date pickers), tables (sortable columns), and detail views
-- A **new agent** on a different platform can read `purpose` + `instructions` and understand what to do — no prior context needed
-
-### Supported Field Types
-
-| Type | Input Types | UI Renders As |
-|------|-------------|---------------|
-| `string` | `text`, `textarea`, `select` | Text input, multiline area, or dropdown |
-| `number` | `number` | Numeric input |
-| `boolean` | `toggle` | Switch/toggle |
-| `date` | `date` | Date picker (ISO 8601) |
-| `array` | `list` | Dynamic add/remove list |
-| `object` | `group` | Nested field group |
-
 ### Agent-Portable Metadata
 
-Schemas include metadata that any agent can understand:
+Schemas are self-documenting. Switch agents — the new one reads `purpose` + `instructions` and knows exactly what to do.
 
-| Field | Purpose |
-|-------|---------|
-| `purpose` | **Why** this schema exists — "Track daily expenses" |
-| `instructions` | **How** an agent should use it — "Create a record when user reports spending" |
+| Field | What it tells a new agent |
+|-------|--------------------------|
+| `purpose` | **Why** this schema exists — *"Track daily expenses"* |
+| `instructions` | **How** to use it — *"Create a record when user reports spending"* |
 | `examples` | Sample records showing expected data shape |
 | `tags` | Discovery & categorization — `["finance", "personal"]` |
 | `createdBy` | Origin tracking — `"openclaw"`, `"user:mohit"` |
 
-This means your data isn't locked into one agent platform. Switch agents, and the new one reads the schema and knows exactly what to do.
+### Auto-Generated UI
 
-## Packages
+The React SDK renders the right component for every field type — no manual wiring:
+
+| Type | Input Types | UI Renders As |
+|------|-------------|---------------|
+| `string` | `text`, `textarea`, `select` | Text input, multiline, or dropdown |
+| `number` | `number` | Numeric input |
+| `boolean` | `toggle` | Switch/toggle |
+| `date` | `date` | Date picker |
+| `array` | `list` | Dynamic add/remove list |
+| `object` | `group` | Nested field group |
+
+### Dual Protocol
+
+Agents talk MCP. Browsers talk REST. Same server, same data, same validation.
+
+| Protocol | For | Endpoint |
+|----------|-----|----------|
+| **MCP** (Streamable HTTP) | AI agents | `POST /mcp` |
+| **REST** | React SDK / any HTTP client | `/api/:userId/...` |
+
+---
+
+## Architecture
+
+```
+                    ┌──────────────────────────────────────────────┐
+                    │              ClawFace Server                  │
+  AI Agent ────────▶│                                              │
+                    │  POST /mcp ──▶ MCP Tools ──┐                │
+                    │                             ▼                │
+                    │                        DbProvider            │
+                    │                        (Cosmos DB)           │
+                    │                             ▲                │
+                    │  /api/:userId ─▶ REST API ──┘                │
+  React App ───────▶│                                              │
+                    └──────────────────────────────────────────────┘
+```
+
+**Design decisions:**
+- **Stateless MCP** — each request creates a fresh server instance, shares a connection pool
+- **Pluggable DB** — `DbProvider` interface; Cosmos DB today, Postgres/SQLite/DynamoDB next
+- **Strict validation** — type mismatches rejected server-side, errors include `hint` for agents
+- **Zero lock-in** — schemas are self-documenting; switch agents or databases without losing context
+
+---
+
+## Project Structure
 
 ```
 packages/
-├── shared/          # Types, validation, constants (zero dependencies)
-├── mcp-server/      # MCP + REST server (Express, Cosmos DB)
-└── react-sdk/       # React components + hooks for auto-generated UI
-    ├── core/        #   Vanilla JS client (framework-agnostic)
-    └── react/       #   React components, hooks, field registry
+├── shared/          Zero-dependency types, validation, constants
+├── mcp-server/      MCP + REST server (Express, Cosmos DB)
+└── react-sdk/       React components + hooks
+    ├── core/          Framework-agnostic API client
+    └── react/         Provider, hooks, field registry, components
 
 apps/
-└── demo/            # Example React app with full CRUD
+└── demo/            Example app (Vite + shadcn/ui + Tailwind)
 
 config/
-├── workspace/       # Agent workspace file templates (AGENTS.md, SOUL.md, TOOLS.md, ...)
-└── examples/        # Per-agent config (openclaw/, claude-desktop/, vscode/, ...)
+├── workspace/       Agent workspace templates (behavior, memory, tools)
+└── examples/        Per-agent MCP configs (openclaw, claude-desktop, vscode, ...)
 ```
+
+<details>
+<summary><strong>Packages in detail</strong></summary>
 
 ### `@clawface/shared`
 
-Shared types and validation used by both server and client. Zero runtime dependencies.
+Core types and validation shared between server and client. Zero runtime dependencies.
 
-- `FieldDef`, `SchemaResponse`, `RecordResponse` — the core type system
-- `QueryFilter`, `QueryOptions` — filtering + pagination types
-- `ErrorResponse` — structured errors with `hint` field
+- `FieldDef`, `SchemaResponse`, `RecordResponse` — the type system
+- `QueryFilter`, `QueryOptions` — filtering + pagination
+- `validateRecordData`, `normalizeSchemaInput` — shared validation logic
 
 ### `@clawface/mcp-server`
 
-Dual-protocol server: MCP (for agents) + REST (for the UI).
+Dual-protocol server: MCP for agents, REST for UIs.
 
-**MCP Tools** (9 tools):
+**MCP Tools (9):**
 
 | Tool | Description |
 |------|-------------|
 | `list_schemas` | List all schemas for a user |
-| `get_schema` | Get schema definition by name |
-| `define_schema` | Create or update a schema |
-| `delete_schema` | Delete schema (optionally with all data) |
+| `get_schema` | Get full schema definition |
+| `define_schema` | Create a new schema |
+| `update_schema` | Update schema definition |
+| `delete_schema` | Delete schema (optionally with data) |
 | `query_records` | Filter, sort, paginate records |
-| `get_record` | Get a single record by ID |
+| `get_record` | Get single record by ID |
 | `create_record` | Create a new record |
-| `update_record` | Update an existing record (full replace) |
+| `update_record` | Update existing record |
 | `delete_record` | Delete a record |
 
-**REST API** (for the React SDK):
+**REST API:**
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -212,156 +248,166 @@ Dual-protocol server: MCP (for agents) + REST (for the UI).
 
 ### `@clawface/react-sdk`
 
-Drop-in React components and hooks. Everything auto-generates from schema metadata.
+Drop-in React components and hooks. Auto-generates UI from schema metadata.
 
 **Components:**
 
 | Component | What it renders |
 |-----------|----------------|
-| `<SchemaList />` | Grid/list of all schemas with icons + descriptions |
-| `<DataTable />` | Sortable, paginated table of records |
+| `<SchemaList />` | Grid of schema cards with icons + descriptions |
+| `<DataTable />` | Sortable, paginated record table |
 | `<RecordForm />` | Auto-generated form with validation |
 | `<RecordDetail />` | Read-only detail view |
-| `<FieldGroup />` | Grouped fields with collapsible sections |
+| `<FieldGroup />` | Grouped fields with sections |
 
 **Hooks:**
 
 | Hook | Returns |
 |------|---------|
-| `useSchemas()` | All schemas for the current user |
+| `useSchemas()` | All schemas for current user |
 | `useSchema(name)` | Single schema definition |
-| `useRecords(schema, options?)` | Paginated, filtered records |
+| `useRecords(schema, opts?)` | Paginated, filtered records |
 | `useRecord(id)` | Single record |
-| `useCreateRecord()` | Mutation for creating records |
-| `useUpdateRecord()` | Mutation for updating records |
-| `useDeleteRecord()` | Mutation for deleting records |
-| `useFieldValidation()` | Client-side validation against schema |
+| `useCreateRecord()` | Create mutation |
+| `useUpdateRecord()` | Update mutation |
+| `useDeleteRecord()` | Delete mutation |
+| `useFieldValidation()` | Client-side validation |
 
-**Custom Fields:**
+**Custom field renderers:**
 
 ```tsx
 import { registerField } from "@clawface/react-sdk/react";
 
-// Register a custom field renderer for a specific input type
-registerField("color-picker", ({ value, onChange, field }) => (
+registerField("color-picker", ({ value, onChange }) => (
   <input type="color" value={value} onChange={e => onChange(e.target.value)} />
 ));
 ```
 
+</details>
+
+---
+
 ## Configuration
 
-Full configuration guide: **[config/README.md](config/README.md)**
+Full guide: **[config/README.md](config/README.md)**
 
-### Connecting an AI Agent
+### Server
 
-Each supported agent has its own config directory under [`config/examples/`](config/examples/) with a `mcp-client.json` and setup instructions:
+```bash
+cd packages/mcp-server
+cp local.settings.example.json local.settings.json
+```
 
-| Agent | Directory | Notes |
-|-------|-----------|-------|
-| [OpenClaw](config/examples/openclaw/) | `config/examples/openclaw/` | Uses mcporter bridge, requires workspace files |
-| [Claude Desktop](config/examples/claude-desktop/) | `config/examples/claude-desktop/` | Native MCP, tools auto-discovered |
-| [VS Code](config/examples/vscode/) | `config/examples/vscode/` | Copilot / Claude Code extension |
-| _NanoClaw, NemoClaw, Hermes Agent_ | _(coming soon)_ | Add new agents under `config/examples/<agent>/` |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DB_PROVIDER` | Yes | Database backend (`cosmos`) |
+| `COSMOS_CONNECTION_STRING` | Yes | Azure Cosmos DB connection string |
+| `COSMOS_DB_NAME` | Yes | Database name |
 
-### Agent Workspace Files
+### Connecting Agents
 
-ClawFace includes a set of **workspace templates** that define how AI agents behave, remember, and interact. These are in [`config/workspace/`](config/workspace/):
+Each agent has its own config directory with `mcp-client.json` and setup instructions:
+
+| Agent | Config | Status |
+|-------|--------|--------|
+| [OpenClaw](config/examples/openclaw/) | mcporter bridge + workspace files | Ready |
+| [Claude Desktop](config/examples/claude-desktop/) | Native MCP, auto-discovered tools | Ready |
+| [VS Code](config/examples/vscode/) | Copilot / Claude Code | Ready |
+| NanoClaw | — | Coming soon |
+| NemoClaw | — | Coming soon |
+| Hermes Agent | — | Coming soon |
+
+> **Adding a new agent?** Create `config/examples/<agent-name>/` with `mcp-client.json` and `README.md`.
+
+### Agent Workspace
+
+ClawFace provides [workspace templates](config/workspace/) that define how agents behave, remember, and use tools:
 
 | File | Purpose |
 |------|---------|
-| `AGENTS.md` | Agent behavior, memory system, safety rules |
+| `AGENTS.md` | Behavior rules, memory system, safety guidelines |
 | `SOUL.md` | Core identity and values |
+| `TOOLS.md` | db-mcp calling patterns, schema metadata rules |
 | `USER.md` | User profile template |
 | `IDENTITY.md` | Agent identity template |
 | `BOOTSTRAP.md` | First-run onboarding flow |
-| `TOOLS.md` | db-mcp tool reference, schema metadata rules |
-
-Copy these into your agent's workspace directory to get started:
 
 ```bash
-cp -r config/workspace/* /path/to/.openclaw/workspace/
+cp -r config/workspace/* ~/.openclaw/workspace/
 ```
 
-The workspace files are designed to be **agent-portable** — any LLM agent (OpenClaw, NemoClaw, or custom) can read them and understand how to operate without prior context.
+These files are **agent-portable** — any LLM agent can read them and operate without prior context.
+
+---
 
 ## Self-Hosting
 
-The MCP server currently uses **Azure Cosmos DB** as its backend. Set these environment variables:
+### Azure Cosmos DB (current)
 
 ```bash
-COSMOS_CONNECTION_STRING=AccountEndpoint=https://your-account.documents.azure.com:443/;AccountKey=your-key;
-COSMOS_DB_NAME=clawface
 DB_PROVIDER=cosmos
+COSMOS_CONNECTION_STRING="AccountEndpoint=https://...;AccountKey=...;"
+COSMOS_DB_NAME=clawface
 ```
 
-> **Pluggable providers**: The server uses a `DbProvider` interface. Adding PostgreSQL, SQLite, or DynamoDB support is straightforward — implement the interface and register it in the factory.
+### Docker
 
-## Why Not Just Use [existing tool]?
-
-| Tool | What it does | Missing |
-|------|-------------|---------|
-| Google MCP Toolbox | MCP server for existing databases | No auto-generated UI. Agent-only. |
-| CentralMind Gateway | Auto-generates REST APIs from DB schema | No UI layer. API only. |
-| Supabase/Firebase | General-purpose BaaS | Human-first, not agent-first. No schema-driven auto-UI from agent definitions. |
-| NocoDB / Baserow | Airtable-like open DB | Human-first with MCP bolted on as afterthought. |
-
-ClawFace is **agent-first**: the AI defines the data model, the UI follows automatically. No one else does this.
-
-## Architecture
-
-```
-                    ┌──────────────────────────────────────────────┐
-                    │              ClawFace Server                  │
-  AI Agent ────────▶│  /mcp   (MCP Streamable HTTP, stateless)    │
-                    │  /api   (REST, for React SDK)                │
-                    │  /health                                      │
-                    │                                              │
-                    │  ┌────────────┐    ┌──────────────────────┐  │
-                    │  │ MCP Tools  │───▶│   DbProvider         │  │
-                    │  │ (9 tools)  │    │   (Cosmos DB)        │  │
-                    │  └────────────┘    └──────────────────────┘  │
-                    │  ┌────────────┐              │               │
-  React App ───────▶│  │ REST Routes│──────────────┘               │
-                    │  └────────────┘                              │
-                    └──────────────────────────────────────────────┘
+```bash
+docker run -p 3000:3000 \
+  -e DB_PROVIDER=cosmos \
+  -e COSMOS_CONNECTION_STRING="..." \
+  -e COSMOS_DB_NAME=clawface \
+  ghcr.io/aiclawface/clawface:latest
 ```
 
-**Key design decisions:**
-- **Stateless MCP** — each request creates a fresh server instance, shares a connection pool
-- **Schema-as-contract** — single source of truth between agent and UI
-- **Agent-portable metadata** — `purpose`, `instructions`, `examples` fields survive platform switches
-- **Pluggable DB** — `DbProvider` interface for any backend
-- **Strict validation** — type mismatches rejected server-side, errors include `hint` for agents
+### Other Databases
+
+The server uses a `DbProvider` interface. Adding PostgreSQL, SQLite, or DynamoDB is straightforward — implement the interface and register it in `provider/factory.ts`.
+
+---
+
+## Comparison
+
+| Tool | Approach | Auto-Generated UI | Agent-First |
+|------|----------|-------------------|-------------|
+| **ClawFace** | Agent defines schema → UI follows | Yes | Yes |
+| Google MCP Toolbox | MCP server for existing DBs | No | Partial |
+| CentralMind Gateway | Auto-generates REST from DB schema | No | No |
+| Supabase / Firebase | General-purpose BaaS | No | No |
+| NocoDB / Baserow | Airtable-like open DB | Manual | No |
+
+ClawFace is **agent-first**: the AI defines the data model, the UI follows automatically.
+
+---
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ```bash
-# Clone the repo
-git clone https://github.com/ClawFace-dev/clawface.git
-cd clawface
+git clone https://github.com/AiClawFace/clawface.git
+cd clawface && npm install
 
-# Install dependencies
-npm install
-
-# Build all packages
-npm run build
-
-# Run the MCP server
-cd packages/mcp-server && npm start
-
-# Run the demo app
-cd apps/demo && npm run dev
+npm run build          # Build all packages
+npm run test           # Run tests
+npm run dev            # Start demo app (Vite dev server)
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## Community
+
+- [Discord](https://discord.gg/clawface) — Questions, ideas, show & tell
+- [GitHub Issues](https://github.com/AiClawFace/clawface/issues) — Bug reports & feature requests
+- [𝕏 @AiClawFace](https://x.com/AiClawFace) — Updates & announcements
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE) for details.
+[Apache-2.0](LICENSE)
 
 ---
 
 <p align="center">
-  <strong>ClawFace</strong> — Where agents meet humans.<br/>
-  <a href="https://clawface.io">clawface.io</a> · <a href="https://x.com/ClawFaceAI">@ClawFaceAI</a>
+  <strong>ClawFace</strong> — The missing UI layer for AI agents.<br/>
+  <a href="https://clawface.io">clawface.io</a>
 </p>

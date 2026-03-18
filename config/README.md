@@ -1,6 +1,6 @@
 # Configuration
 
-This directory contains all configuration templates and references for ClawFace.
+Everything you need to set up ClawFace — server, agents, UI, and containers.
 
 ## Directory Structure
 
