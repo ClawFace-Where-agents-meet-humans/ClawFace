@@ -47,7 +47,7 @@ describe("schema-tools", () => {
   beforeEach(() => {
     server = new McpServer({ name: "test", version: "1.0.0" });
     provider = createMockProvider();
-    registerSchemaTools(server, provider);
+    registerSchemaTools(server, provider, "user1");
   });
 
   describe("define_schema", () => {
@@ -55,7 +55,6 @@ describe("schema-tools", () => {
       const mockDoc: SchemaDoc = {
         id: "user1:contacts",
         pk: "user1",
-        userId: "user1",
         schemaName: "contacts",
         displayName: "Contacts",
         fields: {
@@ -68,7 +67,6 @@ describe("schema-tools", () => {
       (provider.createSchema as ReturnType<typeof vi.fn>).mockResolvedValue(mockDoc);
 
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "contacts",
         displayName: "Contacts",
         fields: { name: { type: "string", required: true } },
@@ -88,7 +86,6 @@ describe("schema-tools", () => {
 
     it("rejects invalid schemaName", async () => {
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "My Contacts",
         fields: { name: { type: "string" } },
       });
@@ -100,7 +97,6 @@ describe("schema-tools", () => {
 
     it("rejects empty fields", async () => {
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "test",
         fields: {},
       });
@@ -112,7 +108,6 @@ describe("schema-tools", () => {
 
     it("rejects mismatched inputType/type", async () => {
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "test",
         fields: { age: { type: "number", inputType: "textarea" } },
       });
@@ -122,7 +117,6 @@ describe("schema-tools", () => {
 
     it("rejects select without options", async () => {
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "test",
         fields: { role: { type: "string", inputType: "select" } },
       });
@@ -137,7 +131,6 @@ describe("schema-tools", () => {
       );
 
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "contacts",
         fields: { name: { type: "string" } },
       });
@@ -154,7 +147,6 @@ describe("schema-tools", () => {
         {
           id: "user1:contacts",
           pk: "user1",
-          userId: "user1",
           schemaName: "contacts",
           displayName: "Contacts",
           fields: { name: { type: "string" }, email: { type: "string" } },
@@ -165,7 +157,7 @@ describe("schema-tools", () => {
       ];
       (provider.listSchemas as ReturnType<typeof vi.fn>).mockResolvedValue(schemas);
 
-      const result = await callTool(server, "list_schemas", { userId: "user1" });
+      const result = await callTool(server, "list_schemas", {});
       const body = parseResult(result) as Array<{ schemaName: string; fieldCount: number }>;
 
       expect(body).toHaveLength(1);
@@ -178,7 +170,6 @@ describe("schema-tools", () => {
         {
           id: "user1:contacts",
           pk: "user1",
-          userId: "user1",
           schemaName: "contacts",
           fields: { name: { type: "string" }, email: { type: "string" } },
           version: 1,
@@ -188,7 +179,7 @@ describe("schema-tools", () => {
       ];
       (provider.listSchemas as ReturnType<typeof vi.fn>).mockResolvedValue(schemas);
 
-      const result = await callTool(server, "list_schemas", { userId: "user1" });
+      const result = await callTool(server, "list_schemas", {});
       const body = parseResult(result) as Array<{ fieldNames: string[] }>;
 
       expect(body[0].fieldNames).toEqual(["name", "email"]);
@@ -197,7 +188,7 @@ describe("schema-tools", () => {
     it("returns empty array when no schemas", async () => {
       (provider.listSchemas as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      const result = await callTool(server, "list_schemas", { userId: "user1" });
+      const result = await callTool(server, "list_schemas", {});
       const body = parseResult(result) as unknown[];
 
       expect(body).toHaveLength(0);
@@ -209,7 +200,6 @@ describe("schema-tools", () => {
       const schema: SchemaDoc = {
         id: "user1:contacts",
         pk: "user1",
-        userId: "user1",
         schemaName: "contacts",
         fields: { name: { type: "string" } },
         version: 1,
@@ -219,7 +209,6 @@ describe("schema-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(schema);
 
       const result = await callTool(server, "get_schema", {
-        userId: "user1",
         schemaName: "contacts",
       });
       const body = parseResult(result) as SchemaDoc;
@@ -232,7 +221,6 @@ describe("schema-tools", () => {
       const schema: SchemaDoc = {
         id: "user1:contacts",
         pk: "user1",
-        userId: "user1",
         schemaName: "contacts",
         fields: { name: { type: "string" } },
         version: 1,
@@ -242,7 +230,6 @@ describe("schema-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(schema);
 
       const result = await callTool(server, "get_schema", {
-        userId: "user1",
         schemaName: "contacts",
       });
       const body = parseResult(result) as Record<string, unknown>;
@@ -256,7 +243,6 @@ describe("schema-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await callTool(server, "get_schema", {
-        userId: "user1",
         schemaName: "nonexistent",
       });
 
@@ -271,7 +257,6 @@ describe("schema-tools", () => {
     const existingSchema: SchemaDoc = {
       id: "user1:contacts",
       pk: "user1",
-      userId: "user1",
       schemaName: "contacts",
       fields: {
         name: { type: "string", label: "Name", inputType: "text", order: 1 },
@@ -289,7 +274,6 @@ describe("schema-tools", () => {
       const updated: SchemaDoc = {
         id: "user1:contacts",
         pk: "user1",
-        userId: "user1",
         schemaName: "contacts",
         fields: { name: { type: "string" }, phone: { type: "string" } },
         version: 2,
@@ -299,7 +283,6 @@ describe("schema-tools", () => {
       (provider.updateSchema as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
 
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         fields: { name: { type: "string" }, phone: { type: "string" } },
       });
@@ -318,7 +301,6 @@ describe("schema-tools", () => {
       );
 
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         fields: { phone: { type: "string" } },
       });
@@ -336,7 +318,6 @@ describe("schema-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(existingSchema);
 
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "test",
         fields: { age: { type: "number", inputType: "textarea" } },
       });
@@ -351,7 +332,6 @@ describe("schema-tools", () => {
       );
 
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "nonexistent",
         displayName: "Updated",
       });
@@ -363,7 +343,6 @@ describe("schema-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "nonexistent",
         fields: { title: { type: "string" } },
       });
@@ -376,7 +355,6 @@ describe("schema-tools", () => {
     it("returns INVALID_INPUT when no recognized update fields are provided", async () => {
       // Simulates agent passing unknown params like 'patch' that get silently stripped by Zod
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         // No recognized update fields — all are undefined
       });
@@ -404,7 +382,6 @@ describe("schema-tools", () => {
 
       // Update groups to remove "contact" — email field still references it
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         groups: [{ key: "personal", label: "Personal Info", order: 1 }],
       });
@@ -434,7 +411,6 @@ describe("schema-tools", () => {
 
       // Remove unused group — no field references it
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         groups: [{ key: "personal", label: "Personal Renamed", order: 1 }],
       });
@@ -446,7 +422,6 @@ describe("schema-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "nonexistent",
         groups: [{ key: "info", label: "Info", order: 1 }],
       });
@@ -462,7 +437,6 @@ describe("schema-tools", () => {
       (provider.deleteSchema as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const result = await callTool(server, "delete_schema", {
-        userId: "user1",
         schemaName: "contacts",
         deleteData: false,
       });
@@ -475,7 +449,6 @@ describe("schema-tools", () => {
       (provider.deleteSchema as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       await callTool(server, "delete_schema", {
-        userId: "user1",
         schemaName: "contacts",
         deleteData: true,
       });
@@ -490,7 +463,6 @@ describe("schema-tools", () => {
       );
 
       const result = await callTool(server, "delete_schema", {
-        userId: "user1",
         schemaName: "contacts",
         deleteData: false,
       });
@@ -504,7 +476,6 @@ describe("schema-tools", () => {
   describe("unknown parameter rejection", () => {
     it("rejects unknown 'patch' parameter on update_schema", async () => {
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         patch: { fields: { title: { type: "string" } } },
       });
@@ -518,7 +489,6 @@ describe("schema-tools", () => {
 
     it("rejects unknown parameter alongside valid ones on update_schema", async () => {
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         displayName: "Updated",
         patch: { fields: { title: { type: "string" } } },
@@ -532,7 +502,6 @@ describe("schema-tools", () => {
 
     it("rejects unknown parameter on define_schema", async () => {
       const result = await callTool(server, "define_schema", {
-        userId: "user1",
         schemaName: "contacts",
         fields: { name: { type: "string" } },
         schema: { displayName: "Wrong wrapper" },
@@ -546,7 +515,6 @@ describe("schema-tools", () => {
 
     it("rejects unknown parameter on get_schema", async () => {
       const result = await callTool(server, "get_schema", {
-        userId: "user1",
         schemaName: "contacts",
         includeRecords: true,
       });
@@ -559,7 +527,6 @@ describe("schema-tools", () => {
 
     it("rejects unknown parameter on delete_schema", async () => {
       const result = await callTool(server, "delete_schema", {
-        userId: "user1",
         schemaName: "contacts",
         force: true,
       });
@@ -572,7 +539,6 @@ describe("schema-tools", () => {
 
     it("reports multiple unknown parameters at once", async () => {
       const result = await callTool(server, "update_schema", {
-        userId: "user1",
         schemaName: "contacts",
         patch: {},
         data: {},

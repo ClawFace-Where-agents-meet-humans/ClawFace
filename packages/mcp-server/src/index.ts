@@ -53,12 +53,10 @@ Use this database only when data should outlive the current conversation and be 
  * Create a new MCP server instance for each request (stateless mode).
  * Tools are registered fresh but share the same DbProvider/connection pool.
  *
- * @param authenticatedUserId - When AUTH_MODE=apikey, the userId resolved from
- *   the Bearer token. Tools will use this instead of the userId argument,
- *   preventing IDOR attacks (user-A passing userId=user-B).
- *   When AUTH_MODE=none, this is undefined and tools use the userId argument.
+ * @param userId - The authenticated user ID, resolved from HTTP auth headers
+ *   (x-user-id or API key). All tool operations are scoped to this user.
  */
-function createServer(authenticatedUserId?: string): McpServer {
+function createServer(userId: string): McpServer {
   const server = new McpServer(
     {
       name: "clawface-mcp-server",
@@ -72,8 +70,8 @@ function createServer(authenticatedUserId?: string): McpServer {
     },
   );
 
-  registerSchemaTools(server, provider, authenticatedUserId);
-  registerDataTools(server, provider, authenticatedUserId);
+  registerSchemaTools(server, provider, userId);
+  registerDataTools(server, provider, userId);
 
   return server;
 }
@@ -95,14 +93,12 @@ async function main(): Promise<void> {
   const mcpAuth = createAuthMiddleware(provider);
 
   // Handle POST requests for client-to-server communication (stateless mode)
-  // When AUTH_MODE=apikey: validates Bearer token and passes authenticated userId
-  // to tools (overrides the userId tool argument to prevent IDOR).
-  // When AUTH_MODE=none: passes through, tools use userId from arguments.
+  // Auth middleware resolves userId from x-user-id header or API key.
+  // Tools use this userId for all DB operations (IDOR prevention).
   app.post("/mcp", mcpAuth, async (req, res) => {
     try {
-      // Pass authenticated userId so tools use it instead of the tool argument
-      const authenticatedUserId = (req as AuthRequest).userId;
-      const server = createServer(authenticatedUserId);
+      const { userId } = req as AuthRequest;
+      const server = createServer(userId);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });

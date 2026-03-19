@@ -35,13 +35,10 @@ const groupDefSchema = z.object({
 // ── Register Schema Tools ────────────────────────────────────────────────────
 
 /**
- * @param authenticatedUserId - When set (AUTH_MODE=apikey), overrides the userId
- *   tool argument for IDOR prevention. When undefined (AUTH_MODE=none), uses
- *   the userId from tool arguments.
+ * @param userId - The authenticated user ID, resolved from HTTP auth headers
+ *   (x-user-id or API key). All tool operations are scoped to this user.
  */
-export function registerSchemaTools(server: McpServer, provider: DbProvider, authenticatedUserId?: string): void {
-  /** Resolve userId: prefer authenticated identity over tool argument. */
-  const resolveUserId = (argUserId: string): string => authenticatedUserId ?? argUserId;
+export function registerSchemaTools(server: McpServer, provider: DbProvider, userId: string): void {
   // ── define_schema ────────────────────────────────────────────────────────
 
   server.tool(
@@ -60,7 +57,6 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "and 'default' for default values.\n\n" +
       "Check list_schemas first to avoid duplicates.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this schema"),
       schemaName: z.string().min(1).describe("Lowercase alphanumeric with underscores, e.g. 'contacts', 'todo_items'"),
       displayName: z.string().optional().describe("Human-readable title, e.g. 'My Contacts'"),
       description: z.string().optional().describe("Brief description of what this data represents"),
@@ -73,8 +69,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       tags: z.array(z.string()).optional().describe("Tags for categorization/discovery, e.g. ['crm', 'sales']"),
       createdBy: z.string().optional().describe("Who/what created this schema: 'openclaw', 'user:mohit', 'nemoclaw'"),
     },
-    async ({ userId: argUserId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
       try {
         // Layer 1: validate schema structure
         const input = {
@@ -105,7 +100,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
   );
 
   enableStrictArgs(server, "define_schema", [
-    "userId", "schemaName", "displayName", "description", "icon",
+    "schemaName", "displayName", "description", "icon",
     "fields", "groups", "purpose", "instructions", "examples", "tags", "createdBy",
   ]);
 
@@ -113,13 +108,10 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
 
   server.tool(
     "list_schemas",
-    "List all schemas defined by a user. Returns metadata including purpose, instructions, " +
+    "List all schemas for the authenticated user. Returns metadata including purpose, instructions, " +
       "and tags — enough for any agent to understand what each schema is for without prior context.",
-    {
-      userId: z.string().min(1).describe("The user ID whose schemas to list"),
-    },
-    async ({ userId: argUserId }) => {
-      const userId = resolveUserId(argUserId);
+    {},
+    async () => {
       try {
         const schemas = await provider.listSchemas(userId);
         const summary = schemas.map((s) => ({
@@ -146,7 +138,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
-  enableStrictArgs(server, "list_schemas", ["userId"]);
+  enableStrictArgs(server, "list_schemas", []);
 
   // ── get_schema ───────────────────────────────────────────────────────────
 
@@ -156,11 +148,9 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "Use this before create_record or update_record to know exactly which fields " +
       "are available and their types.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this schema"),
       schemaName: z.string().min(1).describe("The schema name to retrieve"),
     },
-    async ({ userId: argUserId, schemaName }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ schemaName }) => {
       try {
         const doc = await provider.getSchema(userId, schemaName);
         if (!doc) {
@@ -182,7 +172,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
-  enableStrictArgs(server, "get_schema", ["userId", "schemaName"]);
+  enableStrictArgs(server, "get_schema", ["schemaName"]);
 
   // ── update_schema ────────────────────────────────────────────────────────
 
@@ -198,7 +188,6 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "  fields: { phone: { type: 'string', label: 'Phone' } }\n\n" +
       "The version will be incremented. Existing records are NOT re-validated.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this schema"),
       schemaName: z.string().min(1).describe("The schema name to update"),
       displayName: z.string().optional().describe("Updated human-readable title"),
       description: z.string().optional().describe("Updated description"),
@@ -211,8 +200,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       tags: z.array(z.string()).optional().describe("Updated tags"),
       createdBy: z.string().optional().describe("Updated creator attribution"),
     },
-    async ({ userId: argUserId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
       try {
         // Guard: reject calls with no recognized update fields (e.g. agent passed "patch" wrapper)
         const hasUpdate = [displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy]
@@ -286,7 +274,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
   );
 
   enableStrictArgs(server, "update_schema", [
-    "userId", "schemaName", "displayName", "description", "icon",
+    "schemaName", "displayName", "description", "icon",
     "fields", "groups", "purpose", "instructions", "examples", "tags", "createdBy",
   ]);
 
@@ -298,15 +286,13 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "deleteData: true or delete all records first. Prefer asking the user for " +
       "confirmation before deleting.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this schema"),
       schemaName: z.string().min(1).describe("The schema name to delete"),
       deleteData: z
         .boolean()
         .default(false)
         .describe("Set to true to also delete all records. Default: false (fail if records exist)"),
     },
-    async ({ userId: argUserId, schemaName, deleteData }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ schemaName, deleteData }) => {
       try {
         await provider.deleteSchema(userId, schemaName, deleteData);
         return {
@@ -326,5 +312,5 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
-  enableStrictArgs(server, "delete_schema", ["userId", "schemaName", "deleteData"]);
+  enableStrictArgs(server, "delete_schema", ["schemaName", "deleteData"]);
 }

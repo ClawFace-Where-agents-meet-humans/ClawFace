@@ -55,13 +55,10 @@ function validateQueryFilters(
 // ── Register Data Tools ──────────────────────────────────────────────────────
 
 /**
- * @param authenticatedUserId - When set (AUTH_MODE=apikey), overrides the userId
- *   tool argument for IDOR prevention. When undefined (AUTH_MODE=none), uses
- *   the userId from tool arguments.
+ * @param userId - The authenticated user ID, resolved from HTTP auth headers
+ *   (x-user-id or API key). All tool operations are scoped to this user.
  */
-export function registerDataTools(server: McpServer, provider: DbProvider, authenticatedUserId?: string): void {
-  /** Resolve userId: prefer authenticated identity over tool argument. */
-  const resolveUserId = (argUserId: string): string => authenticatedUserId ?? argUserId;
+export function registerDataTools(server: McpServer, provider: DbProvider, userId: string): void {
   // ── create_record ──────────────────────────────────────────────────────
 
   server.tool(
@@ -70,12 +67,10 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       "required fields and match the schema's field types exactly. Call get_schema " +
       "first if you're unsure of the field names and types. Do NOT guess field names.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this record"),
       schemaName: z.string().min(1).describe("The schema to create a record in"),
       data: z.record(z.unknown()).describe("Record data matching the schema field definitions"),
     },
-    async ({ userId: argUserId, schemaName, data }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ schemaName, data }) => {
       try {
         // Fetch schema first
         const schema = await provider.getSchema(userId, schemaName);
@@ -113,7 +108,7 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
-  enableStrictArgs(server, "create_record", ["userId", "schemaName", "data"]);
+  enableStrictArgs(server, "create_record", ["schemaName", "data"]);
 
   // ── get_record ─────────────────────────────────────────────────────────
 
@@ -122,11 +117,9 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     "Get a single record by its ID. Returns the full record document including " +
       "data, timestamps, and schema reference.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this record"),
       recordId: z.string().min(1).describe("The record UUID to retrieve"),
     },
-    async ({ userId: argUserId, recordId }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ recordId }) => {
       try {
         const doc = await provider.getRecord(userId, recordId);
         if (!doc) {
@@ -142,7 +135,7 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
-  enableStrictArgs(server, "get_record", ["userId", "recordId"]);
+  enableStrictArgs(server, "get_record", ["recordId"]);
 
   // ── update_record ──────────────────────────────────────────────────────
 
@@ -154,12 +147,10 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       "Workflow: 1) get_record to fetch current data, 2) modify the fields you need, " +
       "3) send the FULL data object back here.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this record"),
       recordId: z.string().min(1).describe("The record UUID to update"),
       data: z.record(z.unknown()).describe("Complete replacement data matching the schema"),
     },
-    async ({ userId: argUserId, recordId, data }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ recordId, data }) => {
       try {
         // Fetch existing record first
         const existing = await provider.getRecord(userId, recordId);
@@ -203,7 +194,7 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
-  enableStrictArgs(server, "update_record", ["userId", "recordId", "data"]);
+  enableStrictArgs(server, "update_record", ["recordId", "data"]);
 
   // ── delete_record ──────────────────────────────────────────────────────
 
@@ -211,11 +202,9 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     "delete_record",
     "Delete a single record by its ID. This action is permanent and cannot be undone.",
     {
-      userId: z.string().min(1).describe("The user ID who owns this record"),
       recordId: z.string().min(1).describe("The record UUID to delete"),
     },
-    async ({ userId: argUserId, recordId }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ recordId }) => {
       try {
         await provider.deleteRecord(userId, recordId);
         return {
@@ -233,7 +222,7 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
-  enableStrictArgs(server, "delete_record", ["userId", "recordId"]);
+  enableStrictArgs(server, "delete_record", ["recordId"]);
 
   // ── query_records ──────────────────────────────────────────────────────
 
@@ -243,7 +232,6 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       "a reasonable limit (default 20, max 100). Use get_schema first to know which " +
       "fields are available for filtering.",
     {
-      userId: z.string().min(1).describe("The user ID whose records to search"),
       schemaName: z.string().min(1).describe("The schema to query records from"),
       filters: z
         .array(
@@ -260,8 +248,7 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       limit: z.number().optional().describe("Max results to return (default 20, max 100)"),
       offset: z.number().optional().describe("Number of results to skip (for pagination)"),
     },
-    async ({ userId: argUserId, schemaName, filters, orderBy, orderDir, limit, offset }) => {
-      const userId = resolveUserId(argUserId);
+    async ({ schemaName, filters, orderBy, orderDir, limit, offset }) => {
       try {
         // Check if schema exists (for filter validation + warning)
         const schema = await provider.getSchema(userId, schemaName);
@@ -321,6 +308,6 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
   );
 
   enableStrictArgs(server, "query_records", [
-    "userId", "schemaName", "filters", "orderBy", "orderDir", "limit", "offset",
+    "schemaName", "filters", "orderBy", "orderDir", "limit", "offset",
   ]);
 }

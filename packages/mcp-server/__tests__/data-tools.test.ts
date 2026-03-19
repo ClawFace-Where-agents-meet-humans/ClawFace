@@ -43,7 +43,6 @@ function parseResult(result: { content: Array<{ type: string; text: string }>; i
 const testSchema: SchemaDoc = {
   id: "user1:contacts",
   pk: "user1",
-  userId: "user1",
   schemaName: "contacts",
   displayName: "Contacts",
   fields: {
@@ -68,7 +67,6 @@ const testSchema: SchemaDoc = {
 const testRecord: RecordDoc = {
   id: "rec-uuid-1",
   pk: "user1",
-  userId: "user1",
   schemaName: "contacts",
   data: { name: "John", email: "john@example.com" },
   createdAt: "2026-01-01T00:00:00Z",
@@ -84,7 +82,7 @@ describe("data-tools", () => {
   beforeEach(() => {
     server = new McpServer({ name: "test", version: "1.0.0" });
     provider = createMockProvider();
-    registerDataTools(server, provider);
+    registerDataTools(server, provider, "user1");
   });
 
   // ── create_record ────────────────────────────────────────────────────────
@@ -95,7 +93,6 @@ describe("data-tools", () => {
       (provider.createRecord as ReturnType<typeof vi.fn>).mockResolvedValue(testRecord);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: { name: "John", email: "john@example.com" },
       });
@@ -110,7 +107,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "nonexistent",
         data: { name: "John" },
       });
@@ -125,7 +121,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: {},
       });
@@ -139,7 +134,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: { email: "john@example.com" }, // missing required 'name'
       });
@@ -155,7 +149,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: { name: "John", unknownField: "value" },
       });
@@ -171,7 +164,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: { name: "John", age: "42" }, // string not number
       });
@@ -187,7 +179,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: { name: "John", role: "superadmin" },
       });
@@ -207,7 +198,6 @@ describe("data-tools", () => {
       (provider.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue(testRecord);
 
       const result = await callTool(server, "get_record", {
-        userId: "user1",
         recordId: "rec-uuid-1",
       });
 
@@ -220,7 +210,6 @@ describe("data-tools", () => {
       (provider.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await callTool(server, "get_record", {
-        userId: "user1",
         recordId: "nonexistent",
       });
 
@@ -236,7 +225,6 @@ describe("data-tools", () => {
       );
 
       const result = await callTool(server, "get_record", {
-        userId: "user1",
         recordId: "some-id",
       });
 
@@ -264,7 +252,6 @@ describe("data-tools", () => {
       (provider.updateRecord as ReturnType<typeof vi.fn>).mockResolvedValue(updatedRecord);
 
       const result = await callTool(server, "update_record", {
-        userId: "user1",
         recordId: "rec-uuid-1",
         data: { name: "Jane", email: "jane@example.com" },
       });
@@ -278,7 +265,6 @@ describe("data-tools", () => {
       (provider.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await callTool(server, "update_record", {
-        userId: "user1",
         recordId: "nonexistent",
         data: { name: "Jane" },
       });
@@ -293,7 +279,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "update_record", {
-        userId: "user1",
         recordId: "rec-uuid-1",
         data: { email: "no-name@example.com" }, // missing required 'name'
       });
@@ -312,7 +297,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "update_record", {
-        userId: "user1",
         recordId: "rec-uuid-1",
         data: {},
       });
@@ -328,7 +312,6 @@ describe("data-tools", () => {
       (provider.deleteRecord as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const result = await callTool(server, "delete_record", {
-        userId: "user1",
         recordId: "rec-uuid-1",
       });
 
@@ -343,7 +326,6 @@ describe("data-tools", () => {
       );
 
       const result = await callTool(server, "delete_record", {
-        userId: "user1",
         recordId: "nonexistent",
       });
 
@@ -364,7 +346,6 @@ describe("data-tools", () => {
       });
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
       });
 
@@ -382,7 +363,6 @@ describe("data-tools", () => {
       });
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         filters: [{ field: "name", op: "eq", value: "John" }],
         limit: 10,
@@ -407,7 +387,6 @@ describe("data-tools", () => {
       });
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "nonexistent",
       });
 
@@ -421,7 +400,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         filters: [{ field: "fone", op: "eq", value: "123" }],
       });
@@ -436,7 +414,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         filters: [{ field: "active", op: "gt", value: true }],
       });
@@ -450,7 +427,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         filters: [{ field: "age", op: "contains", value: 3 }],
       });
@@ -464,7 +440,6 @@ describe("data-tools", () => {
       (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         orderBy: "nonexistent_field",
       });
@@ -483,7 +458,6 @@ describe("data-tools", () => {
       });
 
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
       });
 
@@ -500,7 +474,6 @@ describe("data-tools", () => {
       });
 
       await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         limit: 500,
       });
@@ -520,7 +493,6 @@ describe("data-tools", () => {
       });
 
       await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         offset: -10,
       });
@@ -536,7 +508,6 @@ describe("data-tools", () => {
   describe("unknown parameter rejection", () => {
     it("rejects unknown parameter on create_record", async () => {
       const result = await callTool(server, "create_record", {
-        userId: "user1",
         schemaName: "contacts",
         data: { name: "Alice" },
         validate: true,
@@ -551,7 +522,6 @@ describe("data-tools", () => {
 
     it("rejects unknown parameter on get_record", async () => {
       const result = await callTool(server, "get_record", {
-        userId: "user1",
         recordId: "rec-123",
         includeSchema: true,
       });
@@ -564,7 +534,6 @@ describe("data-tools", () => {
 
     it("rejects unknown parameter on update_record", async () => {
       const result = await callTool(server, "update_record", {
-        userId: "user1",
         recordId: "rec-123",
         data: { name: "Bob" },
         patch: { email: "bob@test.com" },
@@ -578,7 +547,6 @@ describe("data-tools", () => {
 
     it("rejects unknown parameter on delete_record", async () => {
       const result = await callTool(server, "delete_record", {
-        userId: "user1",
         recordId: "rec-123",
         force: true,
       });
@@ -591,7 +559,6 @@ describe("data-tools", () => {
 
     it("rejects unknown parameter on query_records", async () => {
       const result = await callTool(server, "query_records", {
-        userId: "user1",
         schemaName: "contacts",
         search: "alice",
       });
