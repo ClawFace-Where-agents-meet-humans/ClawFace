@@ -169,16 +169,50 @@ export function registerRestRoutes(app: Express, provider: DbProvider): void {
     try {
       const { userId } = req as AuthRequest;
       const { schemaName } = req.params;
-      const input: Partial<SchemaInput> = req.body;
+      const { displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy } = req.body;
+      const hasUpdate = [displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy]
+        .some((v: unknown) => v !== undefined);
+      if (!hasUpdate) {
+        throw new DbMcpError(
+          "INVALID_INPUT",
+          "No update fields provided. Include at least one of: fields, displayName, description, icon, groups, purpose, instructions, examples, tags, createdBy.",
+        );
+      }
+      const input: Partial<SchemaInput> = { displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy };
+      // Strip undefined keys so the provider only sees explicitly provided values
+      for (const key of Object.keys(input) as (keyof typeof input)[]) {
+        if (input[key] === undefined) delete input[key];
+      }
 
       // Validate fields if provided
       if (input.fields) {
-        const errors = validateSchemaInput(schemaName, { fields: input.fields, groups: input.groups });
+        // Merge incoming fields with existing fields (patch, not full replace)
+        const existing = await provider.getSchema(userId, schemaName);
+        if (!existing) {
+          throw new NotFoundError("Schema", schemaName);
+        }
+        const mergedFields = { ...existing.fields, ...input.fields };
+        const mergedGroups = input.groups ?? existing.groups;
+
+        const errors = validateSchemaInput(schemaName, { fields: mergedFields, groups: mergedGroups });
         if (errors.length > 0) {
           throw new SchemaValidationError(errors, "Fix the field definitions and try again");
         }
-        const normalized = normalizeSchemaInput({ fields: input.fields, groups: input.groups });
+        const normalized = normalizeSchemaInput({ fields: mergedFields, groups: mergedGroups });
         input.fields = normalized.fields;
+      } else if (input.groups) {
+        // Groups-only update: validate existing field group refs against new groups
+        const existing = await provider.getSchema(userId, schemaName);
+        if (!existing) {
+          throw new NotFoundError("Schema", schemaName);
+        }
+        const errors = validateSchemaInput(schemaName, { fields: existing.fields, groups: input.groups });
+        if (errors.length > 0) {
+          throw new SchemaValidationError(
+            errors,
+            "Some existing fields reference group keys not in the updated groups.",
+          );
+        }
       }
 
       const doc = await provider.updateSchema(userId, schemaName, input);

@@ -511,5 +511,95 @@ describe("data-tools", () => {
         expect.objectContaining({ limit: 100 }),
       );
     });
+
+    it("clamps negative offset to 0", async () => {
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(testSchema);
+      (provider.queryRecords as ReturnType<typeof vi.fn>).mockResolvedValue({
+        records: [],
+        total: 0,
+      });
+
+      await callTool(server, "query_records", {
+        userId: "user1",
+        schemaName: "contacts",
+        offset: -10,
+      });
+
+      expect(provider.queryRecords).toHaveBeenCalledWith(
+        "user1",
+        "contacts",
+        expect.objectContaining({ offset: 0 }),
+      );
+    });
+  });
+
+  describe("unknown parameter rejection", () => {
+    it("rejects unknown parameter on create_record", async () => {
+      const result = await callTool(server, "create_record", {
+        userId: "user1",
+        schemaName: "contacts",
+        data: { name: "Alice" },
+        validate: true,
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string; hint: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'validate'");
+      expect(body.hint).toContain("Valid parameters");
+    });
+
+    it("rejects unknown parameter on get_record", async () => {
+      const result = await callTool(server, "get_record", {
+        userId: "user1",
+        recordId: "rec-123",
+        includeSchema: true,
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'includeSchema'");
+    });
+
+    it("rejects unknown parameter on update_record", async () => {
+      const result = await callTool(server, "update_record", {
+        userId: "user1",
+        recordId: "rec-123",
+        data: { name: "Bob" },
+        patch: { email: "bob@test.com" },
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'patch'");
+    });
+
+    it("rejects unknown parameter on delete_record", async () => {
+      const result = await callTool(server, "delete_record", {
+        userId: "user1",
+        recordId: "rec-123",
+        force: true,
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'force'");
+    });
+
+    it("rejects unknown parameter on query_records", async () => {
+      const result = await callTool(server, "query_records", {
+        userId: "user1",
+        schemaName: "contacts",
+        search: "alice",
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'search'");
+    });
   });
 });

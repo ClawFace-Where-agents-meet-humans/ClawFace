@@ -9,6 +9,7 @@ import {
   RecordValidationError,
   toMcpErrorResult,
 } from "../errors.js";
+import { enableStrictArgs } from "./strict-args.js";
 
 // ── Filter Validation ────────────────────────────────────────────────────────
 
@@ -69,8 +70,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       "required fields and match the schema's field types exactly. Call get_schema " +
       "first if you're unsure of the field names and types. Do NOT guess field names.",
     {
-      userId: z.string().describe("The user ID who owns this record"),
-      schemaName: z.string().describe("The schema to create a record in"),
+      userId: z.string().min(1).describe("The user ID who owns this record"),
+      schemaName: z.string().min(1).describe("The schema to create a record in"),
       data: z.record(z.unknown()).describe("Record data matching the schema field definitions"),
     },
     async ({ userId: argUserId, schemaName, data }) => {
@@ -112,6 +113,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
+  enableStrictArgs(server, "create_record", ["userId", "schemaName", "data"]);
+
   // ── get_record ─────────────────────────────────────────────────────────
 
   server.tool(
@@ -119,8 +122,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     "Get a single record by its ID. Returns the full record document including " +
       "data, timestamps, and schema reference.",
     {
-      userId: z.string().describe("The user ID who owns this record"),
-      recordId: z.string().describe("The record UUID to retrieve"),
+      userId: z.string().min(1).describe("The user ID who owns this record"),
+      recordId: z.string().min(1).describe("The record UUID to retrieve"),
     },
     async ({ userId: argUserId, recordId }) => {
       const userId = resolveUserId(argUserId);
@@ -139,16 +142,20 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
+  enableStrictArgs(server, "get_record", ["userId", "recordId"]);
+
   // ── update_record ──────────────────────────────────────────────────────
 
   server.tool(
     "update_record",
-    "Update an existing record. You must provide the COMPLETE data object (this is " +
-      "a full replace, not a partial update). Fetch the record with get_record first " +
-      "to see current values, then modify and send back the full object.",
+    "Update an existing record. You must provide the COMPLETE data object — this is " +
+      "a full replace, NOT a partial patch. ALL fields (including unchanged ones) must " +
+      "be included, or required fields will fail validation.\n\n" +
+      "Workflow: 1) get_record to fetch current data, 2) modify the fields you need, " +
+      "3) send the FULL data object back here.",
     {
-      userId: z.string().describe("The user ID who owns this record"),
-      recordId: z.string().describe("The record UUID to update"),
+      userId: z.string().min(1).describe("The user ID who owns this record"),
+      recordId: z.string().min(1).describe("The record UUID to update"),
       data: z.record(z.unknown()).describe("Complete replacement data matching the schema"),
     },
     async ({ userId: argUserId, recordId, data }) => {
@@ -196,14 +203,16 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
+  enableStrictArgs(server, "update_record", ["userId", "recordId", "data"]);
+
   // ── delete_record ──────────────────────────────────────────────────────
 
   server.tool(
     "delete_record",
     "Delete a single record by its ID. This action is permanent and cannot be undone.",
     {
-      userId: z.string().describe("The user ID who owns this record"),
-      recordId: z.string().describe("The record UUID to delete"),
+      userId: z.string().min(1).describe("The user ID who owns this record"),
+      recordId: z.string().min(1).describe("The record UUID to delete"),
     },
     async ({ userId: argUserId, recordId }) => {
       const userId = resolveUserId(argUserId);
@@ -224,6 +233,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
     },
   );
 
+  enableStrictArgs(server, "delete_record", ["userId", "recordId"]);
+
   // ── query_records ──────────────────────────────────────────────────────
 
   server.tool(
@@ -232,8 +243,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       "a reasonable limit (default 20, max 100). Use get_schema first to know which " +
       "fields are available for filtering.",
     {
-      userId: z.string().describe("The user ID whose records to search"),
-      schemaName: z.string().describe("The schema to query records from"),
+      userId: z.string().min(1).describe("The user ID whose records to search"),
+      schemaName: z.string().min(1).describe("The schema to query records from"),
       filters: z
         .array(
           z.object({
@@ -279,15 +290,16 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
           );
         }
 
-        // Cap limit
+        // Cap limit and clamp offset
         const cappedLimit = Math.min(limit ?? DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT);
+        const clampedOffset = Math.max(offset ?? 0, 0);
 
         const result = await provider.queryRecords(userId, schemaName, {
           filters: filters as QueryFilter[] | undefined,
           orderBy,
           orderDir,
           limit: cappedLimit,
-          offset,
+          offset: clampedOffset,
         });
 
         const responseBody: { records: unknown[]; total: number; warning?: string } = {
@@ -307,4 +319,8 @@ export function registerDataTools(server: McpServer, provider: DbProvider, authe
       }
     },
   );
+
+  enableStrictArgs(server, "query_records", [
+    "userId", "schemaName", "filters", "orderBy", "orderDir", "limit", "offset",
+  ]);
 }

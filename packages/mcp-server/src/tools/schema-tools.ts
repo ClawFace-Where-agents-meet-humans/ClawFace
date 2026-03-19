@@ -4,6 +4,7 @@ import type { DbProvider } from "../types.js";
 import { toSchemaResponse } from "../types.js";
 import { validateSchemaInput, normalizeSchemaInput } from "../validation.js";
 import { SchemaValidationError, NotFoundError, DbMcpError, toMcpErrorResult } from "../errors.js";
+import { enableStrictArgs } from "./strict-args.js";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────
 
@@ -20,8 +21,8 @@ const fieldDefSchema: z.ZodType<Record<string, unknown>> = z.lazy(() =>
     group: z.string().optional(),
     hint: z.string().optional(),
     default: z.unknown().optional(),
-    items: z.record(z.unknown()).optional(),
-    properties: z.record(z.record(z.unknown())).optional(),
+    items: z.lazy(() => fieldDefSchema).optional(),
+    properties: z.record(z.lazy(() => fieldDefSchema)).optional(),
   }),
 );
 
@@ -59,8 +60,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "and 'default' for default values.\n\n" +
       "Check list_schemas first to avoid duplicates.",
     {
-      userId: z.string().describe("The user ID who owns this schema"),
-      schemaName: z.string().describe("Lowercase alphanumeric with underscores, e.g. 'contacts', 'todo_items'"),
+      userId: z.string().min(1).describe("The user ID who owns this schema"),
+      schemaName: z.string().min(1).describe("Lowercase alphanumeric with underscores, e.g. 'contacts', 'todo_items'"),
       displayName: z.string().optional().describe("Human-readable title, e.g. 'My Contacts'"),
       description: z.string().optional().describe("Brief description of what this data represents"),
       icon: z.string().optional().describe("Icon hint for UI, e.g. 'users', 'clipboard'"),
@@ -103,6 +104,11 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
+  enableStrictArgs(server, "define_schema", [
+    "userId", "schemaName", "displayName", "description", "icon",
+    "fields", "groups", "purpose", "instructions", "examples", "tags", "createdBy",
+  ]);
+
   // ── list_schemas ─────────────────────────────────────────────────────────
 
   server.tool(
@@ -110,7 +116,7 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     "List all schemas defined by a user. Returns metadata including purpose, instructions, " +
       "and tags — enough for any agent to understand what each schema is for without prior context.",
     {
-      userId: z.string().describe("The user ID whose schemas to list"),
+      userId: z.string().min(1).describe("The user ID whose schemas to list"),
     },
     async ({ userId: argUserId }) => {
       const userId = resolveUserId(argUserId);
@@ -140,6 +146,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
+  enableStrictArgs(server, "list_schemas", ["userId"]);
+
   // ── get_schema ───────────────────────────────────────────────────────────
 
   server.tool(
@@ -148,8 +156,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "Use this before create_record or update_record to know exactly which fields " +
       "are available and their types.",
     {
-      userId: z.string().describe("The user ID who owns this schema"),
-      schemaName: z.string().describe("The schema name to retrieve"),
+      userId: z.string().min(1).describe("The user ID who owns this schema"),
+      schemaName: z.string().min(1).describe("The schema name to retrieve"),
     },
     async ({ userId: argUserId, schemaName }) => {
       const userId = resolveUserId(argUserId);
@@ -174,20 +182,28 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
+  enableStrictArgs(server, "get_schema", ["userId", "schemaName"]);
+
   // ── update_schema ────────────────────────────────────────────────────────
 
   server.tool(
     "update_schema",
-    "Update an existing schema definition. You can update fields, display metadata, " +
-      "or groups. The version will be incremented. Note: existing records are NOT " +
-      "re-validated against the updated schema.",
+    "Update an existing schema definition. Pass update properties as TOP-LEVEL parameters — " +
+      "do NOT wrap them in a 'patch' object.\n\n" +
+      "Updatable parameters: fields, displayName, description, icon, groups, purpose, " +
+      "instructions, examples, tags, createdBy.\n\n" +
+      "Fields are MERGED with existing fields (only specified fields are added/overwritten, " +
+      "unmentioned fields are preserved). Other properties are replaced.\n\n" +
+      "Example: to add a 'phone' field to an existing schema, pass:\n" +
+      "  fields: { phone: { type: 'string', label: 'Phone' } }\n\n" +
+      "The version will be incremented. Existing records are NOT re-validated.",
     {
-      userId: z.string().describe("The user ID who owns this schema"),
-      schemaName: z.string().describe("The schema name to update"),
+      userId: z.string().min(1).describe("The user ID who owns this schema"),
+      schemaName: z.string().min(1).describe("The schema name to update"),
       displayName: z.string().optional().describe("Updated human-readable title"),
       description: z.string().optional().describe("Updated description"),
       icon: z.string().optional().describe("Updated icon hint"),
-      fields: z.record(fieldDefSchema).optional().describe("Updated field definitions (full replace)"),
+      fields: z.record(fieldDefSchema).optional().describe("Updated field definitions (merged with existing — only specified fields are added/overwritten)"),
       groups: z.array(groupDefSchema).optional().describe("Updated field groups"),
       purpose: z.string().optional().describe("Updated purpose"),
       instructions: z.string().optional().describe("Updated agent instructions"),
@@ -198,6 +214,19 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     async ({ userId: argUserId, schemaName, displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy }) => {
       const userId = resolveUserId(argUserId);
       try {
+        // Guard: reject calls with no recognized update fields (e.g. agent passed "patch" wrapper)
+        const hasUpdate = [displayName, description, icon, fields, groups, purpose, instructions, examples, tags, createdBy]
+          .some((v) => v !== undefined);
+        if (!hasUpdate) {
+          return toMcpErrorResult(
+            new DbMcpError(
+              "INVALID_INPUT",
+              "No update fields provided. Pass at least one of: fields, displayName, description, icon, groups, purpose, instructions, examples, tags, createdBy — as top-level parameters (not wrapped in a 'patch' object).",
+              "Example: update_schema(userId='...', schemaName='...', fields={ title: { type: 'string' } })",
+            ),
+          );
+        }
+
         const input: Partial<import("../types.js").SchemaInput> = {};
         if (displayName !== undefined) input.displayName = displayName;
         if (description !== undefined) input.description = description;
@@ -209,15 +238,40 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
         if (tags !== undefined) input.tags = tags;
         if (createdBy !== undefined) input.createdBy = createdBy;
 
+        // Fetch existing schema if needed (field merge or groups cross-validation)
+        let existing: import("../types.js").SchemaDoc | null = null;
+        if (fields !== undefined || groups !== undefined) {
+          existing = await provider.getSchema(userId, schemaName);
+          if (!existing) {
+            return toMcpErrorResult(
+              new NotFoundError("Schema", schemaName, "Use define_schema to create it first, or list_schemas to see available schemas"),
+            );
+          }
+        }
+
         if (fields !== undefined) {
           const typedFields = fields as unknown as Record<string, import("../types.js").FieldDef>;
-          // Validate if fields are being updated
-          const validationErrors = validateSchemaInput(schemaName, { fields: typedFields, groups });
+
+          // Merge incoming fields with existing fields (patch, not full replace)
+          const mergedFields = { ...existing!.fields, ...typedFields };
+          const mergedGroups = groups ?? existing!.groups;
+
+          // Validate merged fields (includes group reference cross-validation)
+          const validationErrors = validateSchemaInput(schemaName, { fields: mergedFields, groups: mergedGroups });
           if (validationErrors.length > 0) {
             throw new SchemaValidationError(validationErrors, "Fix the field definitions and try again");
           }
-          const normalized = normalizeSchemaInput({ fields: typedFields, groups });
+          const normalized = normalizeSchemaInput({ fields: mergedFields, groups: mergedGroups });
           input.fields = normalized.fields;
+        } else if (groups !== undefined) {
+          // Groups-only update: validate existing field group refs against new groups
+          const validationErrors = validateSchemaInput(schemaName, { fields: existing!.fields, groups });
+          if (validationErrors.length > 0) {
+            throw new SchemaValidationError(
+              validationErrors,
+              "Some existing fields reference group keys that are not in the updated groups. Update the fields first or include the missing groups.",
+            );
+          }
         }
 
         const doc = await provider.updateSchema(userId, schemaName, input);
@@ -231,6 +285,11 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
     },
   );
 
+  enableStrictArgs(server, "update_schema", [
+    "userId", "schemaName", "displayName", "description", "icon",
+    "fields", "groups", "purpose", "instructions", "examples", "tags", "createdBy",
+  ]);
+
   // ── delete_schema ────────────────────────────────────────────────────────
 
   server.tool(
@@ -239,8 +298,8 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       "deleteData: true or delete all records first. Prefer asking the user for " +
       "confirmation before deleting.",
     {
-      userId: z.string().describe("The user ID who owns this schema"),
-      schemaName: z.string().describe("The schema name to delete"),
+      userId: z.string().min(1).describe("The user ID who owns this schema"),
+      schemaName: z.string().min(1).describe("The schema name to delete"),
       deleteData: z
         .boolean()
         .default(false)
@@ -266,4 +325,6 @@ export function registerSchemaTools(server: McpServer, provider: DbProvider, aut
       }
     },
   );
+
+  enableStrictArgs(server, "delete_schema", ["userId", "schemaName", "deleteData"]);
 }

@@ -268,7 +268,24 @@ describe("schema-tools", () => {
   });
 
   describe("update_schema", () => {
+    const existingSchema: SchemaDoc = {
+      id: "user1:contacts",
+      pk: "user1",
+      userId: "user1",
+      schemaName: "contacts",
+      fields: {
+        name: { type: "string", label: "Name", inputType: "text", order: 1 },
+        email: { type: "string", label: "Email", inputType: "text", order: 2 },
+      },
+      version: 1,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+
     it("updates schema fields and increments version", async () => {
+      // getSchema is called to merge fields
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(existingSchema);
+
       const updated: SchemaDoc = {
         id: "user1:contacts",
         pk: "user1",
@@ -292,7 +309,32 @@ describe("schema-tools", () => {
       expect(body.version).toBe(2);
     });
 
+    it("merges incoming fields with existing fields instead of replacing", async () => {
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(existingSchema);
+      (provider.updateSchema as ReturnType<typeof vi.fn>).mockImplementation(
+        (_uid: string, _name: string, input: Partial<SchemaInput>) => {
+          return Promise.resolve({ ...existingSchema, ...input, version: 2, updatedAt: "2026-01-02T00:00:00Z" });
+        },
+      );
+
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        fields: { phone: { type: "string" } },
+      });
+
+      expect(result.isError).toBeUndefined();
+      // The merged fields sent to updateSchema should contain all three: name, email, phone
+      const updateCall = (provider.updateSchema as ReturnType<typeof vi.fn>).mock.calls[0];
+      const inputFields = updateCall[2].fields;
+      expect(inputFields).toHaveProperty("name");   // existing field preserved
+      expect(inputFields).toHaveProperty("email");   // existing field preserved
+      expect(inputFields).toHaveProperty("phone");   // new field added
+    });
+
     it("validates updated fields", async () => {
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(existingSchema);
+
       const result = await callTool(server, "update_schema", {
         userId: "user1",
         schemaName: "test",
@@ -315,6 +357,103 @@ describe("schema-tools", () => {
       });
 
       expect(result.isError).toBe(true);
+    });
+
+    it("returns NOT_FOUND when updating fields on nonexistent schema", async () => {
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "nonexistent",
+        fields: { title: { type: "string" } },
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string };
+      expect(body.error).toBe("NOT_FOUND");
+    });
+
+    it("returns INVALID_INPUT when no recognized update fields are provided", async () => {
+      // Simulates agent passing unknown params like 'patch' that get silently stripped by Zod
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        // No recognized update fields — all are undefined
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string; hint: string };
+      expect(body.error).toBe("INVALID_INPUT");
+      expect(body.message).toContain("No update fields provided");
+      expect(body.hint).toBeTruthy();
+    });
+
+    it("rejects groups-only update that orphans existing field group references", async () => {
+      const schemaWithGroups: SchemaDoc = {
+        ...existingSchema,
+        fields: {
+          name: { type: "string", label: "Name", inputType: "text", order: 1, group: "personal" },
+          email: { type: "string", label: "Email", inputType: "text", order: 2, group: "contact" },
+        },
+        groups: [
+          { key: "personal", label: "Personal", order: 1 },
+          { key: "contact", label: "Contact", order: 2 },
+        ],
+      };
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(schemaWithGroups);
+
+      // Update groups to remove "contact" — email field still references it
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        groups: [{ key: "personal", label: "Personal Info", order: 1 }],
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string };
+      expect(body.error).toBe("SCHEMA_VALIDATION_ERROR");
+    });
+
+    it("allows groups-only update when all field refs remain valid", async () => {
+      const schemaWithGroups: SchemaDoc = {
+        ...existingSchema,
+        fields: {
+          name: { type: "string", label: "Name", inputType: "text", order: 1, group: "personal" },
+        },
+        groups: [
+          { key: "personal", label: "Personal", order: 1 },
+          { key: "unused", label: "Unused", order: 2 },
+        ],
+      };
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(schemaWithGroups);
+      (provider.updateSchema as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...schemaWithGroups,
+        groups: [{ key: "personal", label: "Personal Renamed", order: 1 }],
+        version: 2,
+      });
+
+      // Remove unused group — no field references it
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        groups: [{ key: "personal", label: "Personal Renamed", order: 1 }],
+      });
+
+      expect(result.isError).toBeUndefined();
+    });
+
+    it("returns NOT_FOUND when updating groups on nonexistent schema", async () => {
+      (provider.getSchema as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "nonexistent",
+        groups: [{ key: "info", label: "Info", order: 1 }],
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string };
+      expect(body.error).toBe("NOT_FOUND");
     });
   });
 
@@ -359,6 +498,91 @@ describe("schema-tools", () => {
       expect(result.isError).toBe(true);
       const body = parseResult(result) as { error: string };
       expect(body.error).toBe("CONFLICT");
+    });
+  });
+
+  describe("unknown parameter rejection", () => {
+    it("rejects unknown 'patch' parameter on update_schema", async () => {
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        patch: { fields: { title: { type: "string" } } },
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string; hint: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'patch'");
+      expect(body.hint).toContain("Valid parameters");
+    });
+
+    it("rejects unknown parameter alongside valid ones on update_schema", async () => {
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        displayName: "Updated",
+        patch: { fields: { title: { type: "string" } } },
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'patch'");
+    });
+
+    it("rejects unknown parameter on define_schema", async () => {
+      const result = await callTool(server, "define_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        fields: { name: { type: "string" } },
+        schema: { displayName: "Wrong wrapper" },
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'schema'");
+    });
+
+    it("rejects unknown parameter on get_schema", async () => {
+      const result = await callTool(server, "get_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        includeRecords: true,
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'includeRecords'");
+    });
+
+    it("rejects unknown parameter on delete_schema", async () => {
+      const result = await callTool(server, "delete_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        force: true,
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'force'");
+    });
+
+    it("reports multiple unknown parameters at once", async () => {
+      const result = await callTool(server, "update_schema", {
+        userId: "user1",
+        schemaName: "contacts",
+        patch: {},
+        data: {},
+      });
+
+      expect(result.isError).toBe(true);
+      const body = parseResult(result) as { error: string; message: string };
+      expect(body.error).toBe("UNKNOWN_PARAMETERS");
+      expect(body.message).toContain("'patch'");
+      expect(body.message).toContain("'data'");
     });
   });
 });
