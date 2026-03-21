@@ -10,20 +10,20 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AiClawFace/clawface/actions"><img src="https://img.shields.io/github/actions/workflow/status/AiClawFace/clawface/ci.yml?branch=main&style=flat-square" alt="CI"></a>
-  <a href="https://github.com/AiClawFace/clawface/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License"></a>
-  <a href="https://www.npmjs.com/package/@clawface/react-sdk"><img src="https://img.shields.io/npm/v/@clawface/react-sdk?style=flat-square&label=react-sdk" alt="npm"></a>
-  <a href="https://github.com/AiClawFace/clawface"><img src="https://img.shields.io/github/stars/AiClawFace/clawface?style=flat-square" alt="Stars"></a>
-  <a href="https://discord.gg/clawface"><img src="https://img.shields.io/discord/0000000000?style=flat-square&label=discord" alt="Discord"></a>
+  <a href="https://github.com/ClawFace-Where-agents-meet-humans/ClawFace"><img src="https://img.shields.io/badge/repo-GitHub-181717?style=flat-square&logo=github" alt="Repository"></a>
+  <a href="https://github.com/ClawFace-Where-agents-meet-humans/ClawFace/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License"></a>
+  <a href="https://www.npmjs.com/package/@clawface/react-sdk"><img src="https://img.shields.io/badge/react--sdk-workspace%20package-61DAFB?style=flat-square&logo=react&logoColor=000000" alt="React SDK"></a>
+  <a href="https://github.com/ClawFace-Where-agents-meet-humans/ClawFace"><img src="https://img.shields.io/github/stars/ClawFace-Where-agents-meet-humans/ClawFace?style=flat-square" alt="Stars"></a>
+ <!-- <a href="https://discord.gg/clawface"><img src="https://img.shields.io/badge/discord-join%20chat-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a> -->
 </p>
 
 <p align="center">
   <a href="https://clawface.io">Website</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="https://docs.clawface.io">Docs</a> ·
+  <!-- <a href="https://docs.clawface.io">Docs</a> · -->
   <a href="#configuration">Configuration</a> ·
-  <a href="https://discord.gg/clawface">Discord</a> ·
-  <a href="https://x.com/AiClawFace">𝕏</a>
+  <!-- <a href="https://discord.gg/clawface">Discord</a> · -->
+  <a href="https://x.com/ClawFaceAI">𝕏</a>
 </p>
 
 <br/>
